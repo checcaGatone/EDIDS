@@ -1,31 +1,33 @@
 package myAdapter;
 
 public interface HCollection {
-
     int size();
 
     boolean isEmpty();
 
-    boolean contains(Object obj);
+    boolean contains(Object object);
 
-    Object[] toArray(Object arrayTarget[]);
+    HIterator iterator();
 
-    boolean add(Object obj);
+    Object[] toArray();
 
-    boolean remove(Object obj);
+    Object[] toArray(Object[] array);
 
-    boolean containsAll(HCollection coll);
+    boolean add(Object object);
 
-    boolean addAll(HCollection coll);
+    boolean remove(Object object);
 
-    boolean removeAll(HCollection coll);
+    boolean containsAll(HCollection collection);
 
-    boolean retainAll(HCollection coll);
+    boolean addAll(HCollection collection);
+
+    boolean removeAll(HCollection collection);
+
+    boolean retainAll(HCollection collection);
 
     void clear();
-    
-    boolean equals(Object obj);
+
+    boolean equals(Object object);
 
     int hashCode();
-
 }

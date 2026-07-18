@@ -1,4 +1,4 @@
 package myAdapter;
-public class HSet {
-    
+
+public interface HSet extends HCollection {
 }
