@@ -1,4 +1,8 @@
 package myAdapter;
-public class HIterator {
+public interface HIterator {
+    boolean hasNext();
+
+    Object next();
     
+    void remove();
 }
