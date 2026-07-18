@@ -5,6 +5,29 @@ import java.util.Hashtable;
 import java.util.NoSuchElementException;
 
 public class MapAdapter implements HMap {
+    public static final class HUnsupportedOperationException
+            extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public HUnsupportedOperationException() {
+        }
+
+        public HUnsupportedOperationException(String message) {
+            super(message);
+        }
+    }
+
+    public static final class HIllegalStateException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public HIllegalStateException() {
+        }
+
+        public HIllegalStateException(String message) {
+            super(message);
+        }
+    }
+
     private final Hashtable table;
     private HSet keys;
     private HCollection values;
@@ -187,9 +210,13 @@ public class MapAdapter implements HMap {
                 throw new NullPointerException();
             }
             int currentSize = size();
-            Object[] destination = array.length < currentSize
-                    ? new Object[currentSize]
-                    : array;
+            Object[] destination = array;
+            if (array.length < currentSize) {
+                if (array.getClass() != Object[].class) {
+                    throw new ArrayStoreException();
+                }
+                destination = new Object[currentSize];
+            }
             HIterator iterator = iterator();
             int index = 0;
             while (iterator.hasNext()) {
@@ -203,7 +230,7 @@ public class MapAdapter implements HMap {
         }
 
         public boolean add(Object object) {
-            throw new UnsupportedOperationException();
+            throw new HUnsupportedOperationException();
         }
 
         public abstract boolean remove(Object object);
@@ -400,7 +427,7 @@ public class MapAdapter implements HMap {
 
         public void remove() {
             if (!removable) {
-                throw new IllegalStateException();
+                throw new HIllegalStateException();
             }
             MapAdapter.this.remove(lastKey);
             removable = false;
