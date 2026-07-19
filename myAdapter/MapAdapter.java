@@ -81,7 +81,7 @@ public class MapAdapter implements HMap {
         HIterator iterator = map.entrySet().iterator();
         while (iterator.hasNext()) {
             HMap.Entry entry = (HMap.Entry) iterator.next();
-            table.put(entry.getKey(), entry.getValue());
+            put(entry.getKey(), entry.getValue());
         }
     }
 
@@ -126,6 +126,9 @@ public class MapAdapter implements HMap {
             while (enumeration.hasMoreElements()) {
                 Object key = enumeration.nextElement();
                 Object value = table.get(key);
+                if (!map.containsKey(key)) {
+                    return false;
+                }
                 if (!value.equals(map.get(key))) {
                     return false;
                 }
