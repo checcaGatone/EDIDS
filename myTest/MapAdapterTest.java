@@ -166,6 +166,42 @@ public class MapAdapterTest {
         map.containsValue(null);
     }
 
+    @Test
+    public void getNullKeyThrowsAndPreservesMap() {
+        map.put("a", "1");
+        try {
+            map.get(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertEquals(1, map.size());
+            assertEquals("1", map.get("a"));
+        }
+    }
+
+    @Test
+    public void containsKeyNullThrowsAndPreservesMap() {
+        map.put("a", "1");
+        try {
+            map.containsKey(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertEquals(1, map.size());
+            assertEquals("1", map.get("a"));
+        }
+    }
+
+    @Test
+    public void removeNullKeyThrowsAndPreservesMap() {
+        map.put("a", "1");
+        try {
+            map.remove(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertEquals(1, map.size());
+            assertEquals("1", map.get("a"));
+        }
+    }
+
     /**
      * <h3>Summary</h3>Verifica remove su un mapping presente.
      * <h3>Test Case Design</h3>Controlla valore restituito e stato finale.
@@ -297,6 +333,23 @@ public class MapAdapterTest {
         assertEquals(2, copy.size());
     }
 
+    @Test
+    public void copyConstructorDoesNotCallOverridablePutBeforeInitialization() {
+        HMap source = new MapAdapter();
+        source.put("a", "1");
+        source.put("b", "2");
+
+        HMap copy = new InitializationGuardMapAdapter(source);
+
+        assertEquals(source, copy);
+        assertEquals("1", copy.get("a"));
+        assertEquals("2", copy.get("b"));
+
+        source.put("c", "3");
+        assertFalse(copy.containsKey("c"));
+        assertEquals(2, copy.size());
+    }
+
     /**
      * <h3>Summary</h3>Verifica il costruttore di copia con null.
      * <h3>Test Case Design</h3>Passa esplicitamente una HMap nulla.
@@ -404,5 +457,23 @@ public class MapAdapterTest {
         String representation = map.toString();
         assertTrue(representation.indexOf("a=1") >= 0);
         assertTrue(representation.indexOf("b=2") >= 0);
+    }
+
+    private static final class InitializationGuardMapAdapter
+            extends MapAdapter {
+        private boolean initialized;
+
+        private InitializationGuardMapAdapter(HMap source) {
+            super(source);
+            initialized = true;
+        }
+
+        public Object put(Object key, Object value) {
+            if (!initialized) {
+                throw new AssertionError(
+                        "put invocato prima dell'inizializzazione");
+            }
+            return super.put(key, value);
+        }
     }
 }

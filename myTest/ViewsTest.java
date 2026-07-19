@@ -67,6 +67,30 @@ public class ViewsTest {
     }
 
     @Test
+    public void keySetContainsNullThrowsAndPreservesMap() {
+        try {
+            map.keySet().contains(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertEquals(2, map.size());
+            assertEquals("1", map.get("a"));
+            assertEquals("2", map.get("b"));
+        }
+    }
+
+    @Test
+    public void keySetRemoveNullThrowsAndPreservesMap() {
+        try {
+            map.keySet().remove(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertEquals(2, map.size());
+            assertEquals("1", map.get("a"));
+            assertEquals("2", map.get("b"));
+        }
+    }
+
+    @Test
     public void valuesRemoveDeletesOnlyOneDuplicateMapping() {
         map.put("c", "1");
         assertTrue(map.values().remove("1"));
@@ -93,10 +117,43 @@ public class ViewsTest {
 
     @Test
     public void clearingViewClearsBackingMap() {
-        map.values().clear();
+        HSet keys = map.keySet();
+        HCollection values = map.values();
+        HSet entries = map.entrySet();
+        values.clear();
         assertTrue(map.isEmpty());
-        assertTrue(map.keySet().isEmpty());
-        assertTrue(map.entrySet().isEmpty());
+        assertTrue(keys.isEmpty());
+        assertTrue(values.isEmpty());
+        assertTrue(entries.isEmpty());
+        assertEquals(0, map.size());
+    }
+
+    @Test
+    public void keySetClearEmptiesMapAndEveryExistingView() {
+        HMap local = populatedMap();
+        HSet keys = local.keySet();
+        HCollection values = local.values();
+        HSet entries = local.entrySet();
+        keys.clear();
+        assertTrue(local.isEmpty());
+        assertTrue(keys.isEmpty());
+        assertTrue(values.isEmpty());
+        assertTrue(entries.isEmpty());
+        assertEquals(0, local.size());
+    }
+
+    @Test
+    public void entrySetClearEmptiesMapAndEveryExistingView() {
+        HMap local = populatedMap();
+        HSet keys = local.keySet();
+        HCollection values = local.values();
+        HSet entries = local.entrySet();
+        entries.clear();
+        assertTrue(local.isEmpty());
+        assertTrue(keys.isEmpty());
+        assertTrue(values.isEmpty());
+        assertTrue(entries.isEmpty());
+        assertEquals(0, local.size());
     }
 
     @Test
@@ -134,6 +191,46 @@ public class ViewsTest {
         assertTrue(map.containsKey("a"));
         assertTrue(map.containsKey("c"));
         assertFalse(map.containsKey("b"));
+    }
+
+    @Test
+    public void entrySetRemoveAllRemovesOnlyMatchingMappings() {
+        map.put("c", "3");
+        HMap selected = new MapAdapter();
+        selected.put("a", "1");
+        selected.put("b", "different");
+        assertTrue(map.entrySet().removeAll(selected.entrySet()));
+        assertFalse(map.containsKey("a"));
+        assertEquals("2", map.get("b"));
+        assertEquals("3", map.get("c"));
+        assertEquals(2, map.size());
+    }
+
+    @Test
+    public void entrySetRetainAllKeepsOnlyMatchingMappings() {
+        map.put("c", "3");
+        HMap selected = new MapAdapter();
+        selected.put("a", "1");
+        selected.put("b", "different");
+        selected.put("c", "3");
+        assertTrue(map.entrySet().retainAll(selected.entrySet()));
+        assertEquals("1", map.get("a"));
+        assertFalse(map.containsKey("b"));
+        assertEquals("3", map.get("c"));
+        assertEquals(2, map.size());
+    }
+
+    @Test
+    public void entrySetBulkOperationsReturnFalseWithoutChanges() {
+        HMap noMatches = new MapAdapter();
+        noMatches.put("a", "different");
+        noMatches.put("missing", "value");
+        assertFalse(map.entrySet().removeAll(noMatches.entrySet()));
+        assertEquals(2, map.size());
+
+        HMap same = new MapAdapter(map);
+        assertFalse(map.entrySet().retainAll(same.entrySet()));
+        assertEquals(same, map);
     }
 
     @Test
@@ -213,6 +310,46 @@ public class ViewsTest {
         result[0] = "changed";
         assertTrue(map.keySet().contains("a"));
         assertTrue(map.keySet().contains("b"));
+    }
+
+    @Test
+    public void valuesToArrayPreservesDuplicatesAndIsIndependent() {
+        map.put("c", "1");
+        Object[] result = map.values().toArray();
+        assertEquals(3, result.length);
+        assertEquals(2, arrayOccurrences(result, "1"));
+        assertEquals(1, arrayOccurrences(result, "2"));
+        result[0] = "changed";
+        assertEquals(3, map.size());
+        assertTrue(map.values().contains("1"));
+        assertTrue(map.values().contains("2"));
+    }
+
+    @Test
+    public void entrySetToArrayContainsEntriesForEveryMapping() {
+        Object[] result = map.entrySet().toArray();
+        assertEquals(map.size(), result.length);
+        int index;
+        for (index = 0; index < result.length; index++) {
+            assertTrue(result[index] instanceof HMap.Entry);
+            HMap.Entry entry = (HMap.Entry) result[index];
+            assertTrue(map.containsKey(entry.getKey()));
+            assertEquals(map.get(entry.getKey()), entry.getValue());
+        }
+    }
+
+    @Test
+    public void valuesToArrayReusesLargeArrayAndPreservesTail() {
+        Object sentinel = new Object();
+        Object[] supplied = new Object[] {
+                sentinel, sentinel, sentinel, sentinel
+        };
+        Object[] result = map.values().toArray(supplied);
+        assertSame(supplied, result);
+        assertNull(result[2]);
+        assertSame(sentinel, result[3]);
+        assertTrue(arrayContains(result, "1"));
+        assertTrue(arrayContains(result, "2"));
     }
 
     @Test
@@ -334,5 +471,23 @@ public class ViewsTest {
             }
         }
         return false;
+    }
+
+    private static int arrayOccurrences(Object[] array, Object expected) {
+        int occurrences = 0;
+        int index;
+        for (index = 0; index < array.length; index++) {
+            if (expected.equals(array[index])) {
+                occurrences++;
+            }
+        }
+        return occurrences;
+    }
+
+    private static HMap populatedMap() {
+        HMap result = new MapAdapter();
+        result.put("a", "1");
+        result.put("b", "2");
+        return result;
     }
 }

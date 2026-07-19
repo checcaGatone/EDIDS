@@ -81,7 +81,7 @@ public class MapAdapter implements HMap {
         HIterator iterator = map.entrySet().iterator();
         while (iterator.hasNext()) {
             HMap.Entry entry = (HMap.Entry) iterator.next();
-            put(entry.getKey(), entry.getValue());
+            table.put(entry.getKey(), entry.getValue());
         }
     }
 

@@ -16,6 +16,9 @@ public class TestRunner {
         long elapsed = System.currentTimeMillis() - start;
 
         List<Failure> failures = result.getFailures();
+        int passed = result.getRunCount()
+                - result.getFailureCount()
+                - result.getIgnoreCount();
         int index;
         for (index = 0; index < failures.size(); index++) {
             Failure failure = failures.get(index);
@@ -24,6 +27,7 @@ public class TestRunner {
         }
 
         System.out.println("Test eseguiti: " + result.getRunCount());
+        System.out.println("Test superati: " + passed);
         System.out.println("Test falliti: " + result.getFailureCount());
         System.out.println("Test ignorati: " + result.getIgnoreCount());
         System.out.println("Tempo impiegato: " + elapsed + " ms");

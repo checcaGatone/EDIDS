@@ -58,6 +58,12 @@ public class EntryTest {
         HMap.Entry other = new EntryStub("a", "1");
         assertTrue(entry.equals(other));
         assertTrue(other.equals(entry));
+        assertEquals(entry.hashCode(), other.hashCode());
+    }
+
+    @Test
+    public void entryEqualityIsReflexive() {
+        assertTrue(entry.equals(entry));
     }
 
     @Test
@@ -73,6 +79,16 @@ public class EntryTest {
         int expected = "a".hashCode() ^ "1".hashCode();
         assertEquals(expected, entry.hashCode());
         assertEquals(new EntryStub("a", "1").hashCode(), entry.hashCode());
+    }
+
+    @Test
+    public void hashCodeTracksValueUpdatedThroughSetValue() {
+        entry.setValue("updated");
+        int expected = "a".hashCode() ^ "updated".hashCode();
+        HMap.Entry equivalent = new EntryStub("a", "updated");
+        assertEquals(expected, entry.hashCode());
+        assertTrue(entry.equals(equivalent));
+        assertEquals(equivalent.hashCode(), entry.hashCode());
     }
 
     @Test
