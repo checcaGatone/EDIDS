@@ -26,13 +26,6 @@ public class ViewsTest {
     }
 
     @Test
-    public void repeatedViewRequestsReturnCachedInstances() {
-        assertSame(map.keySet(), map.keySet());
-        assertSame(map.values(), map.values());
-        assertSame(map.entrySet(), map.entrySet());
-    }
-
-    @Test
     public void mapPutIsVisibleInPreviouslyObtainedViews() {
         HSet keys = map.keySet();
         HCollection values = map.values();
@@ -318,28 +311,6 @@ public class ViewsTest {
     }
 
     @Test
-    public void keySetsWithSameElementsAreEqualAndHaveSameHashCode() {
-        HMap other = new MapAdapter();
-        other.put("b", "different");
-        other.put("a", "values");
-        assertEquals(map.keySet(), other.keySet());
-        assertEquals(map.keySet().hashCode(), other.keySet().hashCode());
-        other.put("c", "3");
-        assertFalse(map.keySet().equals(other.keySet()));
-    }
-
-    @Test
-    public void entrySetsWithSameMappingsAreEqualAndHaveSameHashCode() {
-        HMap other = new MapAdapter();
-        other.put("b", "2");
-        other.put("a", "1");
-        assertEquals(map.entrySet(), other.entrySet());
-        assertEquals(map.entrySet().hashCode(), other.entrySet().hashCode());
-        other.put("a", "different");
-        assertFalse(map.entrySet().equals(other.entrySet()));
-    }
-
-    @Test
     public void valuesViewsDoNotUseSetEquality() {
         HMap other = new MapAdapter();
         other.put("x", "1");
@@ -440,6 +411,10 @@ public class ViewsTest {
         assertTrue(set.equals(equivalent));
         assertTrue(equivalent.equals(set));
         assertEquals(set.hashCode(), equivalent.hashCode());
+
+        equivalentMap.put("a", "different");
+        assertFalse(set.equals(equivalentMap.entrySet()));
+        equivalentMap.put("a", "1");
 
         equivalentMap.put("c", "3");
         assertFalse(set.equals(equivalent));

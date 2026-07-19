@@ -254,8 +254,8 @@ public class MapAdapterTest {
 
     /**
      * <h3>Summary</h3>Verifica putAll.
-     * <h3>Test Case Design</h3>Copia mapping in una destinazione già popolata.
-     * <h3>Test Description</h3>Copia due mapping e conserva quello preesistente.
+     * <h3>Test Case Design</h3>Copia mapping in una destinazione con una chiave sovrapposta.
+     * <h3>Test Description</h3>Sostituisce il valore associato alla chiave comune e conserva il mapping estraneo.
      * <h3>Pre-Condition</h3>Sorgente e destinazione valide.
      * <h3>Post-Condition</h3>La destinazione contiene tutti i mapping.
      * <h3>Expected Results</h3>Le tre coppie sono accessibili nella destinazione.
@@ -265,6 +265,7 @@ public class MapAdapterTest {
         HMap source = new MapAdapter();
         source.put("a", "1");
         source.put("b", "2");
+        map.put("a", "old");
         map.put("c", "3");
         map.putAll(source);
         assertEquals(3, map.size());
@@ -390,18 +391,21 @@ public class MapAdapterTest {
 
     /**
      * <h3>Summary</h3>Verifica equals con contenuti o tipi diversi.
-     * <h3>Test Case Design</h3>Confronta stessa dimensione ma chiavi diverse.
-     * <h3>Test Description</h3>Confronta con un'altra HMap, null e una String.
-     * <h3>Pre-Condition</h3>Entrambe le mappe contengono un mapping.
+     * <h3>Test Case Design</h3>Confronta mappe della stessa dimensione con chiavi o valori diversi.
+     * <h3>Test Description</h3>Confronta con due HMap diverse, null e una String.
+     * <h3>Pre-Condition</h3>Le mappe di confronto contengono un mapping.
      * <h3>Post-Condition</h3>Gli oggetti restano invariati.
      * <h3>Expected Results</h3>Tutti i confronti restituiscono false.
      */
     @Test
     public void equalsRejectsDifferentMappingsNullAndOtherTypes() {
         HMap other = new MapAdapter();
+        HMap sameKeyDifferentValue = new MapAdapter();
         map.put("a", "1");
         other.put("b", "1");
+        sameKeyDifferentValue.put("a", "different");
         assertFalse(map.equals(other));
+        assertFalse(map.equals(sameKeyDifferentValue));
         assertFalse(map.equals(null));
         assertFalse(map.equals("not a map"));
     }
