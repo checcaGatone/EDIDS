@@ -255,6 +255,69 @@ public class ViewsTest {
     }
 
     @Test
+    public void keySetRemoveAllWithSameViewEmptiesMap() {
+        HSet view = map.keySet();
+        assertTrue(view.removeAll(view));
+        assertTrue(map.isEmpty());
+        assertTrue(view.isEmpty());
+        assertEquals(0, map.size());
+        assertFalse(view.removeAll(view));
+    }
+
+    @Test
+    public void valuesRemoveAllWithSameViewRemovesDuplicateMappings() {
+        map.put("c", "1");
+        HCollection view = map.values();
+        assertTrue(view.removeAll(view));
+        assertTrue(map.isEmpty());
+        assertTrue(view.isEmpty());
+        assertEquals(0, map.size());
+    }
+
+    @Test
+    public void entrySetRemoveAllWithSameViewEmptiesMap() {
+        HSet view = map.entrySet();
+        assertTrue(view.removeAll(view));
+        assertTrue(map.isEmpty());
+        assertTrue(view.isEmpty());
+        assertEquals(0, map.size());
+    }
+
+    @Test
+    public void keySetRetainAllWithSameViewMakesNoChanges() {
+        HSet view = map.keySet();
+        assertFalse(view.retainAll(view));
+        assertEquals(2, map.size());
+        assertEquals("1", map.get("a"));
+        assertEquals("2", map.get("b"));
+        assertTrue(view.contains("a"));
+        assertTrue(view.contains("b"));
+    }
+
+    @Test
+    public void valuesRetainAllWithSameViewPreservesDuplicateMappings() {
+        map.put("c", "1");
+        HCollection view = map.values();
+        assertFalse(view.retainAll(view));
+        assertEquals(3, map.size());
+        assertEquals("1", map.get("a"));
+        assertEquals("2", map.get("b"));
+        assertEquals("1", map.get("c"));
+        assertEquals(2, arrayOccurrences(view.toArray(), "1"));
+    }
+
+    @Test
+    public void entrySetRetainAllWithSameViewMakesNoChanges() {
+        HSet view = map.entrySet();
+        assertFalse(view.retainAll(view));
+        assertEquals(2, map.size());
+        assertTrue(view.contains(new EntryStub("a", "1")));
+        assertTrue(view.contains(new EntryStub("b", "2")));
+        assertEquals("1", map.get("a"));
+        assertEquals("2", map.get("b"));
+    }
+
+    @Test
     public void keySetsWithSameElementsAreEqualAndHaveSameHashCode() {
         HMap other = new MapAdapter();
         other.put("b", "different");

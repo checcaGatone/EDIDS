@@ -30,7 +30,7 @@ public class IteratorTest {
     }
 
     @Test
-    public void keyIteratorVisitsEverySnapshotKeyOnce() {
+    public void keyIteratorVisitsEveryKeyOnceWhenMapIsUnmodified() {
         HIterator iterator = map.keySet().iterator();
         HMap visited = new MapAdapter();
         while (iterator.hasNext()) {
@@ -212,7 +212,7 @@ public class IteratorTest {
     }
 
     @Test
-    public void independentIteratorsTraverseTheirOwnSnapshots() {
+    public void independentIteratorsTraverseAllKeysWhenMapIsUnmodified() {
         HIterator first = map.keySet().iterator();
         HIterator second = map.keySet().iterator();
         int firstCount = 0;
