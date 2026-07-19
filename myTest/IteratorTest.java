@@ -110,6 +110,53 @@ public class IteratorTest {
     }
 
     @Test
+    public void hasNextBetweenNextAndRemoveKeepsRemoveLegal() {
+        HIterator iterator = map.keySet().iterator();
+        Object key = iterator.next();
+        iterator.hasNext();
+        iterator.remove();
+        assertFalse(map.containsKey(key));
+        assertEquals(2, map.size());
+    }
+
+    @Test
+    public void failedNextAfterEndPreservesLastSuccessfulRemoveTarget() {
+        HIterator iterator = map.keySet().iterator();
+        Object last = null;
+        while (iterator.hasNext()) {
+            last = iterator.next();
+        }
+
+        try {
+            iterator.next();
+            fail();
+        } catch (NoSuchElementException expected) {
+            assertTrue(map.containsKey(last));
+        }
+
+        iterator.remove();
+        assertFalse(map.containsKey(last));
+        assertEquals(2, map.size());
+    }
+
+    @Test
+    public void entrySetValueThenIteratorRemoveDeletesWholeMapping() {
+        HIterator iterator = map.entrySet().iterator();
+        HMap.Entry entry = (HMap.Entry) iterator.next();
+        Object key = entry.getKey();
+        Object oldValue = entry.getValue();
+        Object newValue = "updated";
+
+        entry.setValue(newValue);
+        iterator.remove();
+
+        assertFalse(map.containsKey(key));
+        assertFalse(map.values().contains(oldValue));
+        assertFalse(map.values().contains(newValue));
+        assertEquals(2, map.size());
+    }
+
+    @Test
     public void twoConsecutiveRemovesThrowHIllegalStateException() {
         HIterator iterator = map.values().iterator();
         iterator.next();

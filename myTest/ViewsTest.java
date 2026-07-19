@@ -100,6 +100,27 @@ public class ViewsTest {
     }
 
     @Test
+    public void valuesRemoveInvokesEqualsOnRemovalArgument() {
+        HMap local = new MapAdapter();
+        local.put("key", new StoredRejectingValue());
+
+        assertTrue(local.values().remove(new MatchingRemovalProbe()));
+        assertTrue(local.isEmpty());
+        assertFalse(local.containsKey("key"));
+    }
+
+    @Test
+    public void valuesRemoveDoesNotInvokeEqualsOnStoredValue() {
+        HMap local = new MapAdapter();
+        Object stored = new StoredMatchingValue();
+        local.put("key", stored);
+
+        assertFalse(local.values().remove(new RejectingRemovalProbe()));
+        assertEquals(1, local.size());
+        assertSame(stored, local.get("key"));
+    }
+
+    @Test
     public void entrySetContainsRequiresMatchingKeyAndValue() {
         assertTrue(map.entrySet().contains(new EntryStub("a", "1")));
         assertFalse(map.entrySet().contains(new EntryStub("a", "2")));
@@ -275,6 +296,112 @@ public class ViewsTest {
     }
 
     @Test
+    public void keySetRejectsNullBulkArgumentsWithoutChanges() {
+        assertNullBulkArgumentsRejected(map.keySet());
+    }
+
+    @Test
+    public void valuesRejectNullBulkArgumentsWithoutChanges() {
+        assertNullBulkArgumentsRejected(map.values());
+    }
+
+    @Test
+    public void entrySetRejectsNullBulkArgumentsWithoutChanges() {
+        assertNullBulkArgumentsRejected(map.entrySet());
+    }
+
+    @Test
+    public void valuesContainsNullThrowsAndPreservesMap() {
+        try {
+            map.values().contains(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertFixtureUnchanged();
+        }
+    }
+
+    @Test
+    public void valuesRemoveNullReturnsFalseAndPreservesMap() {
+        assertFalse(map.values().remove(null));
+        assertFixtureUnchanged();
+    }
+
+    @Test
+    public void entrySetRejectsNullAndNonEntryElementsWithoutChanges() {
+        assertFalse(map.entrySet().contains(null));
+        assertFalse(map.entrySet().remove(null));
+        assertFalse(map.entrySet().contains("not an entry"));
+        assertFalse(map.entrySet().remove("not an entry"));
+        assertFixtureUnchanged();
+    }
+
+    @Test
+    public void keySetBulkOperationsReturnFalseWithoutChanges() {
+        HMap noMatches = new MapAdapter();
+        noMatches.put("missing", "x");
+        assertFalse(map.keySet().removeAll(noMatches.keySet()));
+        assertFixtureUnchanged();
+
+        HMap allKeys = new MapAdapter();
+        allKeys.put("a", "x");
+        allKeys.put("b", "x");
+        assertFalse(map.keySet().retainAll(allKeys.keySet()));
+        assertFixtureUnchanged();
+    }
+
+    @Test
+    public void valuesBulkOperationsReturnFalseWithoutChanges() {
+        HMap noMatches = new MapAdapter();
+        noMatches.put("x", "missing");
+        assertFalse(map.values().removeAll(noMatches.values()));
+        assertFixtureUnchanged();
+
+        HMap allValues = new MapAdapter();
+        allValues.put("x", "1");
+        allValues.put("y", "2");
+        assertFalse(map.values().retainAll(allValues.values()));
+        assertFixtureUnchanged();
+    }
+
+    @Test
+    public void keySetSatisfiesSetEqualityBoundaryContracts() {
+        HSet set = map.keySet();
+        HMap equivalentMap = new MapAdapter();
+        equivalentMap.put("b", "different");
+        equivalentMap.put("a", "values");
+        HSet equivalent = equivalentMap.keySet();
+
+        assertFalse(set.equals(null));
+        assertFalse(set.equals("not a set"));
+        assertTrue(set.equals(set));
+        assertTrue(set.equals(equivalent));
+        assertTrue(equivalent.equals(set));
+        assertEquals(set.hashCode(), equivalent.hashCode());
+
+        equivalentMap.put("c", "3");
+        assertFalse(set.equals(equivalent));
+    }
+
+    @Test
+    public void entrySetSatisfiesSetEqualityBoundaryContracts() {
+        HSet set = map.entrySet();
+        HMap equivalentMap = new MapAdapter();
+        equivalentMap.put("b", "2");
+        equivalentMap.put("a", "1");
+        HSet equivalent = equivalentMap.entrySet();
+
+        assertFalse(set.equals(null));
+        assertFalse(set.equals("not a set"));
+        assertTrue(set.equals(set));
+        assertTrue(set.equals(equivalent));
+        assertTrue(equivalent.equals(set));
+        assertEquals(set.hashCode(), equivalent.hashCode());
+
+        equivalentMap.put("c", "3");
+        assertFalse(set.equals(equivalent));
+    }
+
+    @Test
     public void addIsUnsupportedByEveryView() {
         expectUnsupportedAdd(map.keySet(), "c");
         expectUnsupportedAdd(map.values(), "3");
@@ -443,6 +570,46 @@ public class ViewsTest {
         }
     }
 
+    private static final class StoredRejectingValue {
+        public boolean equals(Object object) {
+            return false;
+        }
+
+        public int hashCode() {
+            return 1;
+        }
+    }
+
+    private static final class MatchingRemovalProbe {
+        public boolean equals(Object object) {
+            return object instanceof StoredRejectingValue;
+        }
+
+        public int hashCode() {
+            return 1;
+        }
+    }
+
+    private static final class StoredMatchingValue {
+        public boolean equals(Object object) {
+            return object instanceof RejectingRemovalProbe;
+        }
+
+        public int hashCode() {
+            return 1;
+        }
+    }
+
+    private static final class RejectingRemovalProbe {
+        public boolean equals(Object object) {
+            return false;
+        }
+
+        public int hashCode() {
+            return 1;
+        }
+    }
+
     private static void expectUnsupportedAdd(HCollection collection,
             Object object) {
         try {
@@ -489,5 +656,45 @@ public class ViewsTest {
         result.put("a", "1");
         result.put("b", "2");
         return result;
+    }
+
+    private void assertNullBulkArgumentsRejected(HCollection view) {
+        try {
+            view.containsAll(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertFixtureUnchanged();
+        }
+
+        try {
+            view.addAll(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertFixtureUnchanged();
+        }
+
+        try {
+            view.removeAll(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertFixtureUnchanged();
+        }
+
+        try {
+            view.retainAll(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertFixtureUnchanged();
+        }
+    }
+
+    private void assertFixtureUnchanged() {
+        assertEquals(2, map.size());
+        assertEquals("1", map.get("a"));
+        assertEquals("2", map.get("b"));
+        assertTrue(map.keySet().contains("a"));
+        assertTrue(map.keySet().contains("b"));
+        assertTrue(map.values().contains("1"));
+        assertTrue(map.values().contains("2"));
     }
 }

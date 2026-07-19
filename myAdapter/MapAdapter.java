@@ -364,7 +364,10 @@ public class MapAdapter implements HMap {
         public boolean remove(Object object) {
             HIterator iterator = iterator();
             while (iterator.hasNext()) {
-                if (equal(iterator.next(), object)) {
+                Object value = iterator.next();
+                if (object == null
+                        ? value == null
+                        : object.equals(value)) {
                     iterator.remove();
                     return true;
                 }
