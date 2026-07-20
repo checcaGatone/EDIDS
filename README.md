@@ -11,11 +11,6 @@ disponibile. Per evitare collisioni con le omonime interfacce della versione
 corrente di Java, il package `myAdapter` espone le interfacce locali `HMap`,
 `HCollection`, `HSet` e `HIterator`.
 
-Riferimenti della traccia:
-
-- [Java ME CLDC 1.1](https://docs.oracle.com/javame/config/cldc/ref-impl/cldc1.1/jsr139/index.html)
-- [API J2SE 1.4.2](https://www2.cs.duke.edu/csed/java/jdk1.4.2/docs/api/index.html)
-
 ## Indice
 
 - [Obiettivi e vincoli](#obiettivi-e-vincoli)
