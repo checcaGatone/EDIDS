@@ -113,6 +113,26 @@ public class ViewsTest {
         assertSame(stored, local.get("key"));
     }
 
+    /**
+     * <h3>Summary</h3>Verifica la direzione di equals nella vista values.
+     * <h3>Test Case Design</h3>Usa un confronto asimmetrico valido solo dal valore cercato.
+     * <h3>Test Description</h3>Cerca dalla vista un oggetto che riconosce il valore memorizzato.
+     * <h3>Pre-Condition</h3>La mappa locale contiene un solo mapping.
+     * <h3>Post-Condition</h3>Il mapping resta invariato.
+     * <h3>Expected Results</h3>values().contains restituisce true delegando a containsValue.
+     */
+    @Test
+    public void valuesContainsUsesContainsValueEqualityDirection() {
+        HMap local = new MapAdapter();
+        Object stored = new Object();
+        local.put("key", stored);
+
+        assertTrue(local.values().contains(
+                new AsymmetricContainsProbe(stored)));
+        assertEquals(1, local.size());
+        assertSame(stored, local.get("key"));
+    }
+
     @Test
     public void entrySetContainsRequiresMatchingKeyAndValue() {
         assertTrue(map.entrySet().contains(new EntryStub("a", "1")));
@@ -645,6 +665,22 @@ public class ViewsTest {
 
         public int hashCode() {
             return 1;
+        }
+    }
+
+    private static final class AsymmetricContainsProbe {
+        private final Object match;
+
+        private AsymmetricContainsProbe(Object expected) {
+            match = expected;
+        }
+
+        public boolean equals(Object object) {
+            return object == match;
+        }
+
+        public int hashCode() {
+            return match.hashCode();
         }
     }
 

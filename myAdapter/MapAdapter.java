@@ -55,7 +55,19 @@ public class MapAdapter implements HMap {
     }
 
     public boolean containsValue(Object value) {
-        return table.contains(value);
+        if (value == null) {
+            throw new NullPointerException();
+        }
+        synchronized (table) {
+            Enumeration enumeration = table.keys();
+            while (enumeration.hasMoreElements()) {
+                Object key = enumeration.nextElement();
+                if (value.equals(table.get(key))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public Object get(Object key) {

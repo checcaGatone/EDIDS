@@ -8,6 +8,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -154,16 +155,61 @@ public class MapAdapterTest {
     }
 
     /**
+     * <h3>Summary</h3>Verifica la direzione di equals in containsValue.
+     * <h3>Test Case Design</h3>Usa un confronto asimmetrico che riesce solo dal valore cercato.
+     * <h3>Test Description</h3>Memorizza un oggetto e lo cerca tramite un probe che lo riconosce.
+     * <h3>Pre-Condition</h3>La mappa contiene un solo oggetto memorizzato.
+     * <h3>Post-Condition</h3>Il mapping resta invariato.
+     * <h3>Expected Results</h3>containsValue restituisce true invocando equals sull'argomento.
+     */
+    @Test
+    public void containsValueInvokesEqualsOnSearchArgument() {
+        Object stored = new Object();
+        Object searched = new AsymmetricEqualsProbe(stored);
+        map.put("key", stored);
+
+        assertTrue(map.containsValue(searched));
+        assertEquals(1, map.size());
+        assertSame(stored, map.get("key"));
+    }
+
+    /**
+     * <h3>Summary</h3>Verifica il rifiuto di una corrispondenza valida solo al contrario.
+     * <h3>Test Case Design</h3>Usa un valore memorizzato che riconosce l'argomento, ma non viceversa.
+     * <h3>Test Description</h3>Cerca un oggetto che restituisce false confrontandosi con il probe memorizzato.
+     * <h3>Pre-Condition</h3>La mappa contiene un probe con equals asimmetrico.
+     * <h3>Post-Condition</h3>Il mapping resta invariato.
+     * <h3>Expected Results</h3>containsValue restituisce false ignorando il confronto inverso.
+     */
+    @Test
+    public void containsValueRejectsReverseOnlyMatch() {
+        Object searched = new Object();
+        Object stored = new AsymmetricEqualsProbe(searched);
+        map.put("key", stored);
+
+        assertFalse(map.containsValue(searched));
+        assertEquals(1, map.size());
+        assertSame(stored, map.get("key"));
+    }
+
+    /**
      * <h3>Summary</h3>Verifica containsValue con null.
      * <h3>Test Case Design</h3>Propaga il vincolo di Hashtable sui valori null.
-     * <h3>Test Description</h3>Invoca containsValue(null).
-     * <h3>Pre-Condition</h3>Mappa valida.
-     * <h3>Post-Condition</h3>La mappa non viene modificata.
-     * <h3>Expected Results</h3>Viene sollevata NullPointerException.
+     * <h3>Test Description</h3>Popola la mappa e invoca containsValue(null).
+     * <h3>Pre-Condition</h3>La mappa contiene un mapping valido.
+     * <h3>Post-Condition</h3>Il mapping resta invariato.
+     * <h3>Expected Results</h3>Viene sollevata NullPointerException senza modifiche.
      */
-    @Test(expected = NullPointerException.class)
+    @Test
     public void containsValueRejectsNull() {
-        map.containsValue(null);
+        map.put("key", "value");
+        try {
+            map.containsValue(null);
+            fail();
+        } catch (NullPointerException expected) {
+            assertEquals(1, map.size());
+            assertEquals("value", map.get("key"));
+        }
     }
 
     @Test
@@ -461,6 +507,22 @@ public class MapAdapterTest {
         String representation = map.toString();
         assertTrue(representation.indexOf("a=1") >= 0);
         assertTrue(representation.indexOf("b=2") >= 0);
+    }
+
+    private static final class AsymmetricEqualsProbe {
+        private final Object match;
+
+        private AsymmetricEqualsProbe(Object expected) {
+            match = expected;
+        }
+
+        public boolean equals(Object object) {
+            return object == match;
+        }
+
+        public int hashCode() {
+            return match.hashCode();
+        }
     }
 
     private static final class InitializationGuardMapAdapter

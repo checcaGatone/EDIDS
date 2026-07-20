@@ -18,7 +18,7 @@ public class TestRunner {
         List<Failure> failures = result.getFailures();
         int passed = result.getRunCount()
                 - result.getFailureCount()
-                - result.getIgnoreCount();
+                - result.getAssumptionFailureCount();
         int index;
         for (index = 0; index < failures.size(); index++) {
             Failure failure = failures.get(index);
