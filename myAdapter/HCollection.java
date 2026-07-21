@@ -15,7 +15,7 @@ package myAdapter;
  * originale di J2SE 1.4.2, i metodi lavorano con riferimenti di tipo
  * {@code Object} perché la versione considerata non prevede ancora l’uso dei
  * generici.
- *<\p>
+ *</p>
  * <p>
  * Il ruolo nell'architettura dell'adapter
  * {@code HCollection} è quello di costituire il contratto comune delle
