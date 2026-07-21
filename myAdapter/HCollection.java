@@ -1,7 +1,7 @@
 package myAdapter;
 
 /**
- * /**
+ * 
  * Interfaccia Target che riproduce il contratto di
  * {@code java.util.Collection} di J2SE 1.4.2.
  *
@@ -40,8 +40,9 @@ package myAdapter;
  * esporre la rappresentazione interna usata dall'adapter.
  * </p>
  *
- * <p>le viste collegate alla mappa sono nelle
- *  collezioni restituite da {@code keySet()}, {@code values()} ed
+ * <p>
+ * le viste collegate alla mappa sono nelle
+ * collezioni restituite da {@code keySet()}, {@code values()} ed
  * {@code entrySet()} sono viste sostenute dalla mappa originale. Non
  * contengono quindi una copia indipendente dei suoi dati. Una modifica
  * effettuata sulla mappa si riflette nella vista e, allo stesso modo, le
@@ -56,11 +57,12 @@ package myAdapter;
  * sono supportate dalle viste della mappa, perché da una sola chiave, da un
  * solo valore o da una singola entry non è sempre possibile costruire in
  * modo corretto una nuova associazione. In questi casi viene lanciata una
- * {@link UnsupportedOperationException}, coerentemente con il contratto
+ * {@link MapAdapter.HUnsupportedOperationException}, coerentemente con il contratto
  * delle viste di {@code java.util.Map}.
  * </p>
  *
- * <p>per la gestione degli elementi null,
+ * <p>
+ * per la gestione degli elementi null,
  * l'interfaccia {@code HCollection}, considerata in modo generale, permette
  * alle implementazioni concrete di stabilire eventuali limitazioni sugli
  * elementi accettati. Nel caso di {@link MapAdapter}, le viste dipendono
@@ -70,55 +72,63 @@ package myAdapter;
  * propri Javadoc i casi in cui viene lanciata una
  * {@link NullPointerException}.
  * </p>
- *
  * <p>
  * {@code HCollection} non garantisce un particolare ordine di iterazione.
- * Per le viste di {@code MapAdapter}, l'ordine dipende dalla
+ * Per le viste di {@link MapAdapter}, l'ordine dipende dalla
  * {@code Hashtable} sottostante e non deve quindi essere considerato
- * stabile.
- * </p>
+ * stabile.</p>
+ *
+ * <p>L'interfaccia non impone una semantica generale di uguaglianza basata
+ * sul contenuto. Nel progetto, {@code KeySet} ed {@code EntrySet}, in quanto
+ * implementazioni di {@link HSet}, confrontano gli elementi secondo la
+ * semantica degli insiemi, senza considerare l'ordine. La vista
+ * {@code Values}, invece, conserva il confronto per identità ereditato da
+ * {@code Object}, poiché il contratto generale di {@code Collection} non
+ * richiede un confronto basato sul contenuto.</p>
  *
  * <p>
- * L'interfaccia non aggiunge un contratto generale di uguaglianza oltre
- * a quello definito da {@link Object}.
- * </p>
+ * l'implementazione non fornisce garanzie di thread safety per le operazioni
+ * complessive eseguite sulle viste. La sincronizzazione dei singoli metodi
+ * della {@code Hashtable} non rende atomiche le operazioni composte da più
+ * passaggi.</p>
  *
- * <p>
- * L'implementazione non fornisce garanzie di thread safety per le
- * operazioni complessive eseguite sulle viste. La sincronizzazione dei
- * singoli metodi della {@code Hashtable} non rende automaticamente atomiche
- * le operazioni formate da più passaggi. Gli iteratori utilizzano uno
- * snapshot (copia della mappa indipendente) delle chiavi presenti al momento della loro creazione e non
- * implementano il comportamento fail-fast: eventuali modifiche successive
- * non vengono quindi segnalate mediante, ho scelto di fare cosi 
- * {@code ConcurrentModificationException}.
- * </p>
+ * <p>Ogni iteratore delle viste salva, al momento della propria creazione,
+ * uno snapshot delle sole chiavi presenti nella mappa. Lo snapshot non è una
+ * copia indipendente dell'intera mappa: contiene solamente i riferimenti alle
+ * chiavi che devono essere attraversate, mentre le viste rimangono sostenute
+ * dalla mappa originale.</p>
  *
- * <p>
- * Lo snapshot riguarda però soltanto le chiavi utilizzate
- * dall'attraversamento. Una chiave aggiunta alla mappa dopo la creazione
- * dell'iteratore non viene inserita nello snapshot e quindi non viene visitata
- * da quell'iteratore. Una chiave rimossa successivamente può invece essere
- * ancora presente nello snapshot.
- * </p>
+ * <p>Questa scelta separa lo stato dell'attraversamento
+ * dall'{@code Enumeration} fornita dalla {@code Hashtable}, che non mette a
+ * disposizione un'operazione di rimozione. L'iteratore può quindi ricordare
+ * l'ultima chiave restituita e implementare {@link HIterator#remove()}
+ * rimuovendo il mapping corrispondente dalla mappa backing. Il vantaggio è
+ * che la rimozione tramite iteratore non deve modificare direttamente
+ * un'{@code Enumeration} ancora in corso.</p>
  *
- * <p>
- * Per la vista dei valori e per quella delle entry, il valore associato alla
- * chiave viene recuperato dalla mappa durante l'utilizzo dell'iteratore o
- * dell'entry. Una modifica avvenuta dopo la costruzione dello snapshot può
- * quindi influenzare il valore osservato. La vista rimane dinamica, mentre
- * l'elenco delle chiavi appartenente a uno specifico iteratore rimane quello
- * stabilito al momento della sua creazione.
- * </p>
+ * <p>Una chiave aggiunta dopo la creazione dell'iteratore non appartiene
+ * allo snapshot e quindi non viene visitata da quell'iteratore. Una chiave
+ * rimossa successivamente può invece essere ancora presente nello snapshot.
+ * Nelle iterazioni sui valori e sulle entry, il valore associato alla chiave
+ * viene recuperato dalla mappa originale quando viene richiesto e può quindi
+ * risentire di una modifica successiva.</p>
  *
- * <p>
- * Gli iteratori del progetto non sono <em>fail-fast</em>: non controllano un
- * contatore delle modifiche e non garantiscono il lancio di una
- * {@code ConcurrentModificationException} quando la mappa viene modificata
- * esternamente. Lo snapshot permette all'iteratore di proseguire, ma non
- * trasforma l'intera sequenza di operazioni in un'operazione atomica.
- * </p>
+ * <p>Gli iteratori non sono <em>fail-fast</em>: non mantengono un contatore
+ * delle modifiche e non garantiscono il lancio di una
+ * {@code ConcurrentModificationException}. Se la mappa viene modificata
+ * strutturalmente durante l'iterazione, eccetto attraverso
+ * {@link HIterator#remove()}, il risultato dell'iterazione non è definito.
+ * Questa scelta è coerente con il contratto delle viste di
+ * {@code java.util.Map}, che non rende obbligatorio il comportamento
+ * fail-fast, ed evita di introdurre un meccanismo non fornito direttamente
+ * dalle API di CLDC 1.1.</p>
  *
+ * <p>Lo snapshot stabilizza quindi soltanto l'insieme delle chiavi che
+ * l'iteratore prova ad attraversare: non rende l'iterazione atomica, non
+ * fornisce thread safety e non congela i valori presenti nella mappa.</p>
+ *
+ * @author Filippo Barban
+ * @version 1.1.0
  * @see HMap
  * @see HSet
  * @see HIterator
