@@ -1,382 +1,90 @@
 package myAdapter;
 
 /**
- * Rappresenta il contratto comune delle collezioni utilizzate dal progetto,
- * seguendo il modello dell'interfaccia {@code Collection} di J2SE 1.4.2 e
- * mantenendo la compatibilità richiesta con CLDC 1.1.
+/**
+ * Interfaccia Target che riproduce il contratto di
+ * {@code java.util.Collection} di J2SE 1.4.2.
  *
- * <h2>Introduzione</h2>
+ * <p>Una collezione rappresenta un gruppo di oggetti, chiamati elementi.
+ * L'interfaccia definisce le operazioni comuni che permettono di conoscere
+ * il numero di elementi presenti, verificare la presenza di un oggetto,
+ * ottenere un iteratore, trasformare il contenuto in un array e, quando
+ * consentito, modificare la collezione.</p>
  *
- * <p>
- * {@code HCollection} è l'interfaccia più generale della gerarchia delle
- * collezioni definita nel progetto. Una collezione può essere vista come un
- * gruppo di oggetti, chiamati elementi, sul quale è possibile eseguire
- * operazioni di interrogazione, attraversamento e, quando consentito,
- * modifica.
- * </p>
+ * <p>{@code HCollection} non stabilisce direttamente se gli elementi siano
+ * ordinati o se possano comparire più volte. Queste caratteristiche dipendono
+ * dalla sotto-interfaccia utilizzata e dall'implementazione concreta. Come
+ * nell'interfaccia originale di J2SE 1.4.2, i metodi utilizzano riferimenti
+ * di tipo {@code Object}, poiché la versione considerata non prevede ancora
+ * l'uso dei tipi generici.</p>
  *
- * <p>
- * L'interfaccia stabilisce quali operazioni devono essere disponibili, ma non
- * specifica direttamente come gli elementi devono essere memorizzati. Non
- * contiene quindi una struttura dati propria, non possiede una
- * {@code Hashtable} e non crea autonomamente gli oggetti che rappresenta.
- * Il comportamento concreto deve essere fornito dalle classi che la
- * implementano.
- * </p>
+ * <p><b>Ruolo nell'architettura dell'adapter:</b>
+ * {@code HCollection} costituisce il contratto comune delle collezioni
+ * utilizzate dal progetto, ma non rappresenta direttamente una mappa.
+ * Per questo motivo {@link HMap} non estende questa interfaccia: una mappa
+ * memorizza associazioni tra chiavi e valori, mentre una collezione contiene
+ * singoli elementi.</p>
  *
- * <p>
- * Questa distinzione è importante perché un'interfaccia descrive il contratto
- * visibile al client, mentre l'implementazione decide come rispettarlo.
- * Utilizzando una variabile di tipo {@code HCollection}, il client può
- * lavorare con una collezione senza conoscere necessariamente il nome e la
- * struttura interna della classe concreta che la realizza.
- * </p>
+ * <p>{@link HSet} estende {@code HCollection} aggiungendo il vincolo di
+ * unicità degli elementi. Di conseguenza, {@link HMap#keySet()} e
+ * {@link HMap#entrySet()} restituiscono oggetti di tipo {@code HSet}.
+ * Il metodo {@link HMap#values()}, invece, restituisce una
+ * {@code HCollection}, perché valori associati a chiavi differenti possono
+ * essere uguali e quindi possono comparire più volte.</p>
  *
- * <p>
- * {@code HCollection} non indica che tutti i suoi elementi siano distinti e
- * non stabilisce un ordine generale. Alcune implementazioni possono ammettere
- * più elementi uguali, mentre altre possono vietare i duplicati. Allo stesso
- * modo, un'implementazione può fornire un ordine preciso oppure lasciare
- * l'ordine non specificato. Queste caratteristiche devono essere determinate
- * dall'interfaccia più specifica o dalla classe concreta utilizzata.
- * </p>
+ * <p>Gli elementi delle collezioni possono essere attraversati mediante
+ * {@link HIterator}. L'iteratore permette di esaminare gli elementi senza
+ * esporre la rappresentazione interna usata dall'adapter.</p>
  *
- * <h2>Motivazione della presenza nel progetto</h2>
+ * <p><b>Viste collegate alla mappa:</b>
+ * le collezioni restituite da {@code keySet()}, {@code values()} ed
+ * {@code entrySet()} sono viste sostenute dalla mappa originale. Non
+ * contengono quindi una copia indipendente dei suoi dati. Una modifica
+ * effettuata sulla mappa si riflette nella vista e, allo stesso modo, le
+ * operazioni di rimozione eseguite attraverso la vista modificano la mappa
+ * sottostante.</p>
  *
- * <p>
- * Il progetto deve riprodurre il comportamento dell'interfaccia
- * {@code Map} di J2SE 1.4.2 utilizzando le funzionalità disponibili
- * nell'ambiente CLDC 1.1. Poiché CLDC 1.1 non mette a disposizione l'intero
- * Java Collections Framework, sono state definite localmente le interfacce
- * necessarie.
- * </p>
+ * <p>Le viste permettono le operazioni di rimozione previste dal contratto,
+ * comprese {@code remove}, {@code removeAll}, {@code retainAll} e
+ * {@code clear}. Le operazioni {@code add} e {@code addAll}, invece, non
+ * sono supportate dalle viste della mappa, perché da una sola chiave, da un
+ * solo valore o da una singola entry non è sempre possibile costruire in
+ * modo corretto una nuova associazione. In questi casi viene lanciata una
+ * {@link UnsupportedOperationException}, coerentemente con il contratto
+ * delle viste di {@code java.util.Map}.</p>
  *
- * <p>
- * {@link HMap} rappresenta il contratto della mappa, {@code HCollection}
- * rappresenta il contratto generale di una collezione, {@link HSet}
- * rappresenta una collezione senza elementi duplicati e {@link HIterator}
- * permette di attraversare gli elementi. Queste interfacce collaborano tra
- * loro, ma mantengono compiti differenti.
- * </p>
+ * <p><b>Gestione degli elementi null:</b>
+ * l'interfaccia {@code HCollection}, considerata in modo generale, permette
+ * alle implementazioni concrete di stabilire eventuali limitazioni sugli
+ * elementi accettati. Nel caso di {@link MapAdapter}, le viste dipendono
+ * dalla {@code Hashtable} di CLDC 1.1 usata come adaptee. Poiché tale
+ * struttura non ammette chiavi o valori {@code null}, nemmeno le viste della
+ * mappa possono contenere elementi nulli. I singoli metodi specificano nei
+ * propri Javadoc i casi in cui viene lanciata una
+ * {@link NullPointerException}.</p>
  *
- * <p>
- * La lettera {@code H} serve a distinguere le interfacce locali da quelle
- * appartenenti al pacchetto standard {@code java.util}. Di conseguenza,
- * {@code HCollection} riproduce il contratto essenziale della corrispondente
- * interfaccia di J2SE 1.4.2, ma non è la stessa interfaccia e non può essere
- * utilizzata direttamente dove un metodo richiede una
- * {@code java.util.Collection}.
- * </p>
+ * <p><b>Ordine, uguaglianza e concorrenza:</b>
+ * {@code HCollection} non garantisce un particolare ordine di iterazione.
+ * Per le viste di {@code MapAdapter}, l'ordine dipende dalla
+ * {@code Hashtable} sottostante e non deve quindi essere considerato
+ * stabile.</p>
  *
- * <p>
- * Questa scelta evita anche di dipendere da funzionalità appartenenti a
- * versioni di Java successive rispetto a quella indicata nella consegna.
- * L'interfaccia rimane quindi coerente con le limitazioni dell'ambiente di
- * esecuzione utilizzato dal progetto.
- * </p>
+ * <p>L'interfaccia non aggiunge un contratto generale di uguaglianza oltre
+ * a quello definito da {@link Object}. Le viste che implementano
+ * {@link HSet}, cioè {@code KeySet} ed {@code EntrySet}, confrontano il
+ * proprio contenuto secondo la semantica degli insiemi. La vista
+ * {@code Values}, invece, mantiene il normale confronto per identità
+ * ereditato da {@code Object}, poiché il contratto generale di
+ * {@code Collection} non impone un confronto basato sul contenuto.</p>
  *
- * <h2>Posizione nella gerarchia delle interfacce</h2>
- *
- * <p>
- * {@code HCollection} si trova alla base della gerarchia locale delle
- * collezioni. L'interfaccia {@link HSet} la estende senza aggiungere nuovi
- * metodi, ma introduce un contratto più specifico: una collezione che
- * rappresenta un insieme non può contenere elementi duplicati.
- * </p>
- *
- * <p>
- * Questo significa che ogni {@code HSet} può essere utilizzato anche come
- * {@code HCollection}. Il contrario non è sempre possibile, perché una
- * collezione generica può ammettere più occorrenze dello stesso elemento e
- * quindi non possedere le caratteristiche richieste a un insieme.
- * </p>
- *
- * <p>
- * {@link HMap}, invece, non estende {@code HCollection}. Una mappa non viene
- * considerata una collezione di singoli elementi, perché conserva associazioni
- * tra chiavi e valori. Ogni associazione costituisce un mapping formato da due
- * componenti. Per osservare questi dati come collezioni, la mappa fornisce le
- * viste restituite da {@link HMap#keySet()}, {@link HMap#values()} e
- * {@link HMap#entrySet()}.
- * </p>
- *
- * <p>
- * Anche {@link HIterator} rimane separata da {@code HCollection}.
- * {@code HCollection} dichiara la possibilità di ottenere un iteratore,
- * mentre {@code HIterator} stabilisce le operazioni necessarie per effettuare
- * concretamente l'attraversamento. In questo modo la responsabilità della
- * collezione rimane distinta da quella dell'oggetto che mantiene la posizione
- * durante una visita.
- * </p>
- *
- * <h2>Collezioni generiche e insiemi</h2>
- *
- * <p>
- * Una {@code HCollection} può rappresentare sia una collezione che ammette
- * duplicati sia una collezione che non li ammette. Questa possibilità è
- * necessaria per descrivere correttamente le tre viste di una mappa.
- * </p>
- *
- * <p>
- * La vista delle chiavi restituita da {@link HMap#keySet()} è un
- * {@link HSet}. Una mappa non può contenere contemporaneamente due mapping
- * distinti con la stessa chiave: una nuova associazione con una chiave già
- * presente sostituisce il valore precedente. Per questo motivo ogni chiave
- * compare una sola volta nella vista.
- * </p>
- *
- * <p>
- * Anche la vista restituita da {@link HMap#entrySet()} è un {@code HSet}.
- * I suoi elementi sono oggetti di tipo {@code HMap.Entry}, ciascuno dei quali
- * rappresenta una coppia chiave-valore. Due mapping con la stessa chiave non
- * possono coesistere nella stessa mappa e quindi ogni entry rappresentata
- * dalla vista è unica.
- * </p>
- *
- * <p>
- * La vista dei valori restituita da {@link HMap#values()}, invece, è una
- * {@code HCollection} e non una {@code HSet}. Due chiavi differenti possono
- * essere associate a valori uguali. Le due occorrenze devono essere
- * conservate, perché corrispondono comunque a due mapping distinti.
- * </p>
- *
- * <pre>{@code
- * HMap map = new MapAdapter();
- *
- * map.put("studente1", "Informatica");
- * map.put("studente2", "Informatica");
- *
- * HCollection values = map.values();
- * }</pre>
- *
- * <p>
- * Nell'esempio la vista {@code values} contiene due elementi. Il fatto che
- * entrambi siano uguali alla stringa {@code "Informatica"} non riduce la
- * dimensione della collezione, perché ogni occorrenza proviene da un mapping
- * differente. La dimensione di ogni vista coincide quindi con il numero di
- * mapping presenti nella mappa, non con il numero di elementi distinti
- * osservati nella vista.
- * </p>
- *
- * <h2>Le viste della mappa</h2>
- *
- * <p>
- * Nel progetto, l'utilizzo principale di {@code HCollection} è quello di
- * fornire il tipo comune delle viste appartenenti a {@link MapAdapter}.
- * Una vista permette di osservare gli stessi mapping della mappa concentrandosi
- * sulle chiavi, sui valori oppure sulle entry.
- * </p>
- *
- * <p>
- * Le viste non sono copie indipendenti. Esse rimangono collegate al
- * {@code MapAdapter} dal quale sono state ottenute. Questo comportamento viene
- * normalmente descritto dicendo che le viste sono supportate dalla mappa, o
- * <em>backed by the map</em>.
- * </p>
- *
- * <p>
- * La vera struttura che memorizza chiavi e valori rimane la
- * {@code Hashtable} contenuta nel {@code MapAdapter}. Le viste forniscono
- * soltanto accessi differenti agli stessi dati. Non viene creata una seconda
- * struttura contenente una copia delle chiavi, dei valori o delle entry.
- * </p>
- *
- * <p>
- * Se la mappa viene modificata dopo aver ottenuto una vista, la modifica è
- * visibile anche attraverso la vista già esistente. Non è necessario chiamare
- * nuovamente {@code keySet()}, {@code values()} oppure {@code entrySet()}.
- * </p>
- *
- * <pre>{@code
- * HMap map = new MapAdapter();
- * HCollection values = map.values();
- *
- * map.put("a", "uno");
- * map.put("b", "due");
- * }</pre>
- *
- * <p>
- * Dopo le due chiamate a {@code put()}, la vista {@code values} contiene
- * {@code "uno"} e {@code "due"}, anche se era stata ottenuta quando la mappa
- * era ancora vuota. Questo comportamento dimostra che la vista continua a
- * osservare la mappa e non rappresenta una fotografia fissa del suo contenuto.
- * </p>
- *
- * <p>
- * Il collegamento funziona anche nella direzione opposta. Le operazioni di
- * rimozione eseguite attraverso una vista modificano la mappa originale.
- * Rimuovere una chiave elimina l'intero mapping associato, mentre rimuovere
- * un valore oppure una entry elimina il mapping individuato dall'operazione.
- * La modifica diventa immediatamente visibile anche alle altre viste già
- * ottenute.
- * </p>
- *
- * <p>
- * Le viste non permettono invece di aggiungere liberamente nuovi elementi.
- * L'aggiunta di una sola chiave non specificherebbe il valore da associarle,
- * mentre l'aggiunta di un solo valore non specificherebbe la chiave. Anche
- * l'aggiunta attraverso la vista delle entry viene esclusa dal contratto
- * adottato dal progetto. I nuovi mapping devono essere creati utilizzando
- * {@link HMap#put(Object, Object)}.
- * </p>
- *
- * <p>
- * Nell'implementazione corrente le tre viste vengono create in modo
- * <em>lazy</em>, cioè soltanto quando sono richieste per la prima volta.
- * Successivamente il {@code MapAdapter} conserva e riutilizza l'oggetto
- * corrispondente. Si tratta di una scelta dell'implementazione e non di una
- * proprietà imposta in generale dall'interfaccia {@code HCollection}.
- * </p>
- *
- * <h2>Separazione tra contratto e implementazione</h2>
- *
- * <p>
- * {@code HCollection} dichiara le operazioni che una collezione deve rendere
- * disponibili, ma non contiene il codice necessario per eseguirle. In
- * particolare, l'interfaccia non decide autonomamente dove si trovano gli
- * elementi, come vengono cercati e quali modifiche sono ammesse.
- * </p>
- *
- * <p>
- * All'interno di {@link MapAdapter} il comportamento comune delle viste viene
- * raccolto nella classe astratta interna {@code View}, che implementa
- * {@code HCollection}. Questa classe riutilizza le operazioni del
- * {@code MapAdapter} esterno e permette di evitare la duplicazione dello
- * stesso codice nelle tre viste.
- * </p>
- *
- * <p>
- * Le viste delle chiavi e delle entry derivano anche da {@code SetView},
- * perché devono rispettare il contratto di {@link HSet}. La vista dei valori
- * deriva invece direttamente dal comportamento generale di {@code View},
- * dato che deve mantenere le eventuali occorrenze duplicate.
- * </p>
- *
- * <p>
- * Alcune operazioni sono comuni a tutte le viste. Per esempio, la loro
- * dimensione dipende sempre dal numero di mapping presenti nella mappa.
- * Altre operazioni devono cambiare in base agli elementi rappresentati:
- * cercare una chiave, cercare un valore e verificare la presenza di una
- * coppia chiave-valore richiedono controlli differenti.
- * </p>
- *
- * <p>
- * È quindi necessario non confondere il significato dell'interfaccia con
- * quello di una singola implementazione. {@code HCollection} fornisce il
- * contratto generale; {@code Values}, {@code KeySet} ed {@code EntrySet}
- * stabiliscono il comportamento concreto richiesto dalle rispettive viste.
- * Una futura classe potrebbe implementare {@code HCollection} in modo diverso,
- * purché rispetti il contratto dichiarato.
- * </p>
- *
- * <p>
- * Poiché {@code HCollection} è un'interfaccia, non può definire o imporre
- * costruttori. Nel caso delle viste del progetto, inoltre, il client non deve
- * costruire direttamente gli oggetti concreti: deve ottenerli attraverso i
- * metodi pubblici messi a disposizione da {@link HMap}.
- * </p>
- *
- * <h2>Compatibilità con J2SE 1.4.2 e CLDC 1.1</h2>
- *
- * <p>
- * Le firme utilizzano {@link Object} perché J2SE 1.4.2 precede
- * l'introduzione dei generics. Per esempio, gli elementi non vengono descritti
- * attraverso un parametro di tipo come {@code E}, ma vengono ricevuti e
- * restituiti come oggetti.
- * </p>
- *
- * <p>
- * Questa soluzione consente alla stessa interfaccia di rappresentare
- * collezioni di chiavi, valori ed entry di tipi differenti. Il controllo del
- * tipo concreto avviene però durante l'esecuzione e, quando necessario, il
- * client deve effettuare un cast esplicito.
- * </p>
- *
- * <p>
- * Anche i metodi di conversione utilizzano {@code Object[]} invece delle
- * forme generiche introdotte nelle versioni successive di Java. Il progetto
- * non può quindi utilizzare firme come {@code E[]} oppure {@code T[]}.
- * </p>
- *
- * <p>
- * Per lo stesso motivo {@code HCollection} non estende {@code Iterable} e non
- * può essere attraversata direttamente mediante il ciclo enhanced
- * {@code for}. L'attraversamento viene effettuato esplicitamente ottenendo un
- * {@link HIterator}.
- * </p>
- *
- * <p>
- * Queste non sono mancanze accidentali dell'interfaccia, ma conseguenze della
- * versione di Java richiesta. Aggiungere generics, {@code Iterable}, stream o
- * altri strumenti moderni renderebbe l'interfaccia meno fedele al contratto
- * che il progetto deve riprodurre.
- * </p>
- *
- * <h2>Operazioni opzionali</h2>
- *
- * <p>
- * La presenza di un metodo di modifica nell'interfaccia non implica che ogni
- * implementazione sia obbligata a supportarlo. Nel contratto delle collezioni
- * alcune operazioni sono opzionali. Un'implementazione che non può eseguire
- * correttamente una determinata modifica deve segnalarlo attraverso
- * un'eccezione.
- * </p>
- *
- * <p>
- * Nel progetto le viste di {@code MapAdapter} supportano le rimozioni, perché
- * è possibile determinare quale mapping deve essere eliminato. Non supportano
- * invece le aggiunte, che devono essere effettuate attraverso la mappa. Il
- * rifiuto viene segnalato mediante
- * {@link MapAdapter.HUnsupportedOperationException}, definita localmente per
- * rispettare i limiti dell'ambiente CLDC considerato.
- * </p>
- *
- * <p>
- * Questa distinzione permette a {@code HCollection} di mantenere un contratto
- * generale. Un'altra eventuale implementazione potrebbe supportare anche
- * l'aggiunta, mentre le viste della mappa possono rifiutarla senza violare il
- * significato dell'interfaccia.
- * </p>
- *
- * <p>
- * Nel contratto generale, un'operazione opzionale che non produrrebbe alcun
- * cambiamento può terminare senza modificare la collezione oppure segnalare
- * comunque che l'operazione non è supportata. Il comportamento preciso deve
- * essere indicato nella documentazione del singolo metodo e
- * dell'implementazione concreta.
- * </p>
- *
- * <h2>Elementi ammessi e politica sui valori null</h2>
- *
- * <p>
- * {@code HCollection} non stabilisce una politica universale sugli elementi
- * ammessi. Una classe che la implementa può imporre restrizioni sul tipo degli
- * oggetti oppure vietare l'elemento {@code null}. Queste restrizioni
- * appartengono all'implementazione e devono essere documentate.
- * </p>
- *
- * <p>
- * Nel caso di {@code MapAdapter}, i dati sono memorizzati in una
- * {@code Hashtable} compatibile con CLDC 1.1. Questa struttura non permette
- * di inserire chiavi o valori {@code null}. Di conseguenza, nessuna delle
- * viste della mappa può contenere realmente un elemento {@code null}.
- * </p>
- *
- * <p>
- * Non bisogna però concludere che ogni operazione che riceve {@code null}
- * debba reagire nello stesso modo. In base alla vista e all'operazione
- * concreta, una richiesta non valida può produrre
- * {@link NullPointerException} oppure restituire {@code false}. Le differenze
- * devono essere specificate nella documentazione dei singoli metodi.
- * </p>
- *
- * <p>
- * Anche il significato del tipo dell'elemento dipende dalla vista. La vista
- * delle chiavi riceve oggetti da interpretare come chiavi, la vista dei valori
- * lavora con i valori e la vista delle entry riconosce come elementi validi
- * gli oggetti che rispettano il contratto di {@code HMap.Entry}. L'assenza
- * dei generics rende particolarmente importante descrivere questi requisiti.
- * </p>
+ * <p>L'implementazione non fornisce garanzie di thread safety per le
+ * operazioni complessive eseguite sulle viste. La sincronizzazione dei
+ * singoli metodi della {@code Hashtable} non rende automaticamente atomiche
+ * le operazioni formate da più passaggi. Gli iteratori utilizzano uno
+ * snapshot delle chiavi presenti al momento della loro creazione e non
+ * implementano il comportamento fail-fast: eventuali modifiche successive
+ * non vengono quindi segnalate mediante
+ * {@code ConcurrentModificationException}.</p>
  *
  * <h2>Ordine, uguaglianza e concorrenza</h2>
  *
