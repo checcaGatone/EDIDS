@@ -5,18 +5,19 @@ package myAdapter;
  * Interfaccia Target che riproduce il contratto di
  * {@code java.util.Collection} di J2SE 1.4.2.
  *
+ * <p>
  * L’interfaccia {@code HCollection} definisce le operazioni comuni a ogni
- * collezione — conoscere il numero di elementi, verificare la presenza di un
+ * collezione ovvero conoscere il numero di elementi, verificare la presenza di un
  * oggetto, ottenere un iteratore, convertire il contenuto in array e, dove
- * consentito, modificare la collezione — ma non stabilisce un ordinamento né se
+ * consentito, modificare la collezione, ma non stabilisce un ordinamento né se
  * i duplicati siano ammessi: queste caratteristiche dipendono dalla
  * sotto-interfaccia e dall’implementazione concreta. In linea con l’API
  * originale di J2SE 1.4.2, i metodi lavorano con riferimenti di tipo
  * {@code Object} perché la versione considerata non prevede ancora l’uso dei
  * generici.
- *
+ *<\p>
  * <p>
- * il ruolo nell'architettura dell'adapter
+ * Il ruolo nell'architettura dell'adapter
  * {@code HCollection} è quello di costituire il contratto comune delle
  * collezioni
  * utilizzate dal progetto, ma non rappresenta direttamente una mappa.
@@ -41,7 +42,7 @@ package myAdapter;
  * </p>
  *
  * <p>
- * le viste collegate alla mappa sono nelle
+ * Le viste collegate alla mappa sono nelle
  * collezioni restituite da {@code keySet()}, {@code values()} ed
  * {@code entrySet()} sono viste sostenute dalla mappa originale. Non
  * contengono quindi una copia indipendente dei suoi dati. Una modifica
@@ -62,7 +63,7 @@ package myAdapter;
  * </p>
  *
  * <p>
- * per la gestione degli elementi null,
+ * Invece per la gestione degli elementi null,
  * l'interfaccia {@code HCollection}, considerata in modo generale, permette
  * alle implementazioni concrete di stabilire eventuali limitazioni sugli
  * elementi accettati. Nel caso di {@link MapAdapter}, le viste dipendono
@@ -87,7 +88,7 @@ package myAdapter;
  * richiede un confronto basato sul contenuto.</p>
  *
  * <p>
- * l'implementazione non fornisce garanzie di thread safety per le operazioni
+ * L'implementazione non fornisce garanzie di thread safety per le operazioni
  * complessive eseguite sulle viste. La sincronizzazione dei singoli metodi
  * della {@code Hashtable} non rende atomiche le operazioni composte da più
  * passaggi.</p>
