@@ -13,30 +13,43 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * Test case dedicato alle operazioni fondamentali di {@link MapAdapter} viste
- * attraverso l'interfaccia {@link HMap}.
+ * Test suite dedicata alle operazioni fondamentali di {@link MapAdapter},
+ * osservate principalmente attraverso il contratto pubblico di {@link HMap}.
  *
  * <p><b>Summary:</b>
- * La classe verifica il contratto di {@code Map} previsto da J2SE 1.4.2 per le
- * operazioni che non riguardano direttamente le viste: costruzione, inserimento,
- * ricerca, rimozione, copia, svuotamento, uguaglianza, codice hash e
- * rappresentazione testuale. Vengono inoltre controllati i vincoli sui valori
- * {@code null} introdotti dall'uso di {@code Hashtable} come oggetto adattato.
+ * La suite contiene ventinove metodi di test, eseguiti con JUnit 4.13, e verifica
+ * il contratto di {@code Map} previsto da J2SE 1.4.2 per le funzionalità che non
+ * riguardano direttamente le viste. I casi sono organizzati in categorie
+ * logiche. La prima categoria controlla lo stato iniziale, l'inserimento di un
+ * nuovo mapping e la sostituzione di un valore. La seconda riguarda le ricerche
+ * tramite {@code get}, {@code containsKey} e {@code containsValue}, compresa la
+ * direzione del confronto {@code equals}. La terza verifica rimozione e
+ * svuotamento. La quarta esamina {@code putAll} e il costruttore di copia con
+ * sorgenti popolate, vuote, coincidenti con la destinazione oppure nulle, oltre
+ * all'indipendenza strutturale della copia. L'ultima categoria controlla il
+ * contratto generale dell'oggetto mediante {@code equals}, {@code hashCode} e
+ * {@code toString}. Nei gruppi pertinenti sono inclusi casi negativi con chiavi,
+ * valori o mappe {@code null}, in coerenza con i vincoli derivanti da
+ * {@code Hashtable}, che costituisce l'oggetto adattato.
  * </p>
  *
  * <p><b>Test Case Design:</b>
- * Prima di ogni test viene creata una nuova mappa, in modo che le verifiche siano
- * indipendenti e non risentano dello stato lasciato dai test precedenti. Le
- * stringhe brevi usate come chiavi e valori rendono immediato distinguere i
- * mapping e permettono di calcolare in modo esplicito il codice hash atteso.
- * Quando un'operazione modifica la mappa vengono controllati sia il valore
- * restituito sia il contenuto finale; nei casi di errore si verifica anche che
- * i mapping già presenti non vengano alterati. Oggetti ausiliari con
- * {@code equals} asimmetrico consentono di controllare la direzione del
- * confronto richiesta da {@code containsValue}, mentre mappe popolate in ordine
- * diverso evitano di legare i test all'ordine non garantito da
- * {@code Hashtable}. Il costruttore di copia viene infine verificato sia per il
- * contenuto prodotto sia per l'indipendenza tra sorgente e copia.
+ * La fixture viene ricreata prima di ogni metodo, così ogni risultato dipende
+ * soltanto dai dati preparati nel caso corrente. Il riferimento ha tipo
+ * {@link HMap}: questa scelta verifica l'interfaccia destinata alla libreria
+ * client, mentre il tipo concreto compare solo nei casi relativi ai costruttori
+ * o a una caratteristica interna che deve essere resa osservabile. Le stringhe
+ * brevi e distinte usate come chiavi e valori rendono non ambigui i mapping e
+ * permettono di calcolare manualmente il codice hash atteso. Per le operazioni
+ * mutative si controllano insieme risultato restituito e stato finale, perché
+ * una sola delle due osservazioni non dimostrerebbe l'intero contratto. Nei casi
+ * di errore gestiti esplicitamente viene verificata anche l'assenza di modifiche
+ * parziali. Il probe con uguaglianza asimmetrica è stato introdotto per
+ * distinguere le due possibili direzioni di {@code equals}; la sottoclasse
+ * sentinella rende invece osservabili eventuali chiamate virtuali durante la
+ * costruzione. Infine, l'ordine di inserimento viene variato nei confronti fra
+ * mappe e la stringa prodotta viene verificata per contenuto, senza imporre
+ * l'ordine di iterazione non garantito da {@code Hashtable}.
  * </p>
  *
  * @author Filippo Barban
@@ -69,21 +82,28 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * Si interrogano dimensione e stato di vuoto, perché i due metodi esprimono
-     * lo stesso stato attraverso risultati di tipo diverso e devono essere
-     * coerenti tra loro.
+     * Il caso è stato scelto come controllo di base per tutti i test successivi:
+     * se il costruttore introducesse già un mapping, i risultati delle altre
+     * operazioni sarebbero difficili da interpretare. Si confrontano
+     * {@code size()} e {@code isEmpty()} perché descrivono lo stesso stato con
+     * due tipi di risultato diversi e devono quindi essere coerenti.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Invoca {@code size()} e {@code isEmpty()} senza effettuare inserimenti.
+     * Dopo la preparazione della fixture, il test invoca prima {@code size()} e
+     * ne confronta il risultato con zero; invoca poi {@code isEmpty()} e ne
+     * verifica il valore booleano, senza effettuare alcun inserimento.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture è stata appena creata da {@link #setUp()}.
+     * JUnit ha eseguito {@link #setUp()}; {@link #map} riferisce quindi un nuovo
+     * {@link MapAdapter} valido sul quale non è stata ancora eseguita alcuna
+     * operazione mutativa.
      * </p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa non viene modificata e rimane vuota.
+     * Le due interrogazioni sono terminate e la fixture continua a rappresentare
+     * una mappa priva di mapping.
      * </p>
      *
      * <p><b>Expected Results:</b>
@@ -104,23 +124,29 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * Si controllano insieme il valore restituito da {@code put}, il risultato
-     * di {@code get}, la dimensione e lo stato di vuoto. In questo modo il test
-     * non si limita a osservare il ritorno del metodo, ma accerta che il mapping
-     * sia stato realmente memorizzato.
+     * Il mapping {@code "a"="1"} usa dati non nulli, brevi e distinti, così il
+     * caso esercita il normale percorso di inserimento senza coinvolgere i casi
+     * di errore. Sono stati scelti quattro punti di osservazione: il valore
+     * restituito da {@code put} distingue un nuovo inserimento da una
+     * sostituzione; {@code get} verifica l'associazione; {@code size} rileva
+     * inserimenti mancanti o duplicati; {@code isEmpty} controlla la coerenza
+     * dello stato globale.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce il mapping {@code "a"="1"} e interroga la mappa con la stessa
-     * chiave.
+     * Il test inserisce {@code "a"="1"} e verifica immediatamente il valore
+     * restituito da {@code put}. Successivamente legge la chiave {@code "a"},
+     * misura la dimensione della mappa e ne interroga lo stato di vuoto.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa è vuota e chiave e valore sono entrambi diversi da {@code null}.
+     * JUnit ha creato tramite {@link #setUp()} una mappa vuota; la chiave
+     * {@code "a"} e il valore {@code "1"} sono entrambi non nulli.
      * </p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa contiene un solo mapping, associato alla chiave {@code "a"}.
+     * La fixture contiene un solo mapping osservabile, nel quale la chiave
+     * {@code "a"} è associata al valore {@code "1"}.
      * </p>
      *
      * <p><b>Expected Results:</b>
@@ -142,18 +168,23 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * Due chiamate a {@code put} usano la stessa chiave e valori diversi. La
-     * scelta permette di distinguere una sostituzione corretta dall'aggiunta
+     * Due chiamate a {@code put} usano la stessa chiave e due valori distinguibili.
+     * Questo caso è necessario perché il normale inserimento non dimostra il
+     * comportamento in presenza di una chiave già registrata. Il ritorno della
+     * seconda chiamata verifica la disponibilità del valore precedente, mentre
+     * lettura e dimensione distinguono una sostituzione corretta dall'aggiunta
      * accidentale di un secondo mapping.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce {@code "a"="1"}, sostituisce il valore con {@code "2"} e legge
-     * nuovamente il mapping.
+     * Per prima cosa il test inserisce {@code "a"="1"}. Quindi invoca di nuovo
+     * {@code put} con la stessa chiave e il valore {@code "2"}, confronta il
+     * ritorno con {@code "1"}, legge il valore corrente e controlla la dimensione.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene il solo mapping {@code "a"="1"}.
+     * All'avvio la fixture è vuota; prima della sostituzione il test stabilisce
+     * come stato di background il solo mapping {@code "a"="1"}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -163,7 +194,8 @@ public class MapAdapterTest {
      *
      * <p><b>Expected Results:</b>
      * La seconda chiamata a {@code put} restituisce il valore precedente
-     * {@code "1"} e {@code get("a")} restituisce {@code "2"}.
+     * {@code "1"}, {@code get("a")} restituisce {@code "2"} e la dimensione
+     * rimane pari a {@code 1}.
      * </p>
      */
     @Test
@@ -180,18 +212,23 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * Il valore è valido e soltanto la chiave è nulla, così la causa
-     * dell'errore rimane isolata. Dopo aver intercettato l'eccezione viene
-     * controllato anche lo stato della mappa per escludere modifiche parziali.
+     * Il valore {@code "1"} è valido e soltanto la chiave è nulla, così
+     * l'eventuale errore è attribuibile senza ambiguità alla chiave. Il blocco
+     * {@code try/catch}, anziché la sola proprietà {@code expected} di JUnit,
+     * permette di eseguire dopo l'eccezione l'asserzione sullo stato e di
+     * escludere un inserimento parziale.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Invoca {@code put(null, "1")} e considera fallito il test se il metodo
-     * termina normalmente.
+     * Il test tenta {@code put(null, "1")} nel blocco {@code try}. Se la chiamata
+     * termina normalmente esegue {@code fail()}; se riceve una
+     * {@link NullPointerException}, entra nel blocco {@code catch} e verifica che
+     * la fixture sia ancora vuota.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture è vuota e il valore {@code "1"} è valido.
+     * {@link #setUp()} ha prodotto una fixture vuota; il riferimento usato come
+     * chiave è {@code null}, mentre il valore {@code "1"} è valido e non nullo.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -199,8 +236,9 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * Viene sollevata esattamente una {@link NullPointerException} e la mappa
-     * resta vuota, in accordo con il vincolo di {@code Hashtable} sulle chiavi.
+     * {@code put} trasferisce il controllo al blocco che intercetta
+     * {@link NullPointerException}; {@code fail()} non viene raggiunto e
+     * {@code isEmpty()} restituisce {@code true}.
      * </p>
      */
     @Test
@@ -219,18 +257,22 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * Si usa una chiave valida e un valore nullo per verificare separatamente
-     * il secondo vincolo imposto da {@code Hashtable}. Il controllo finale
-     * sulla fixture accerta che l'operazione non lasci effetti collaterali.
+     * La chiave {@code "a"} è valida e soltanto il valore è nullo: il dato è
+     * stato scelto per isolare il vincolo sui valori da quello sulle chiavi, già
+     * coperto dal test precedente. La gestione esplicita dell'eccezione consente
+     * di controllare anche che l'operazione non lasci un mapping incompleto.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Invoca {@code put("a", null)} e forza un fallimento se non viene lanciata
-     * alcuna eccezione.
+     * Il test invoca {@code put("a", null)} in un blocco {@code try}. Un ritorno
+     * normale provoca {@code fail()}; dopo l'intercettazione di una
+     * {@link NullPointerException}, viene verificato lo stato di vuoto.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture è vuota e la chiave {@code "a"} è valida.
+     * La fixture predisposta da {@link #setUp()} è vuota; la chiave
+     * {@code "a"} è non nulla, mentre il riferimento usato come valore è
+     * {@code null}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -238,8 +280,9 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * Viene sollevata esattamente una {@link NullPointerException} e la mappa
-     * rimane vuota.
+     * {@code put} provoca una {@link NullPointerException}, {@code fail()} non
+     * viene eseguito e {@code isEmpty()} restituisce {@code true} nel blocco
+     * {@code catch}.
      * </p>
      */
     @Test
@@ -258,18 +301,21 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * La ricerca viene eseguita su una mappa vuota con una chiave non nulla. In
-     * questo modo il test controlla il normale caso di assenza senza confonderlo
-     * con il comportamento di errore previsto per una chiave {@code null}.
+     * La ricerca viene eseguita su una mappa vuota usando la chiave non nulla
+     * {@code "missing"}. Questa combinazione separa il normale caso di chiave
+     * assente dal caso eccezionale della chiave {@code null}. Il successivo
+     * controllo di {@code isEmpty()} è stato scelto per confermare che una
+     * lettura fallita non crei implicitamente un mapping.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Richiede il valore associato alla chiave {@code "missing"} e verifica
-     * successivamente che la mappa sia ancora vuota.
+     * Il test chiama {@code get("missing")} e confronta il risultato con
+     * {@code null}; subito dopo invoca {@code isEmpty()} sulla stessa fixture.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture non contiene mapping.
+     * {@link #setUp()} ha creato una mappa senza mapping e la chiave di ricerca
+     * {@code "missing"} è un riferimento valido e non nullo.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -293,18 +339,22 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * La chiave e il valore dello stesso mapping sono stringhe diverse; entrambi
-     * vengono passati a {@code containsKey}. Questa scelta evidenzia un'eventuale
-     * confusione tra le due componenti del mapping.
+     * La chiave {@code "key"} e il valore {@code "value"} sono intenzionalmente
+     * distinti, poi entrambi vengono usati come argomenti di
+     * {@code containsKey}. Il caso è stato scelto per rilevare
+     * un'implementazione che cerchi per errore fra i valori: verificare soltanto
+     * la chiave presente non sarebbe sufficiente a escludere tale difetto.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce {@code "key"="value"}, cerca prima {@code "key"} e poi
-     * {@code "value"} come chiavi.
+     * Il test inserisce {@code "key"="value"}. Quindi passa prima
+     * {@code "key"} e poi {@code "value"} a {@code containsKey}, confrontando i
+     * due risultati rispettivamente con {@code true} e {@code false}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene un solo mapping con chiave e valore distinti.
+     * La fixture nasce vuota; prima delle ricerche il test vi inserisce un solo
+     * mapping con chiave e valore non nulli e differenti.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -329,17 +379,21 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * Si riutilizzano come argomenti sia il valore sia la chiave del mapping. Il
-     * confronto rende evidente che la ricerca opera sulla parte corretta delle
-     * associazioni.
+     * Si riutilizzano come argomenti sia il valore sia la chiave del mapping,
+     * scelti diversi tra loro. La coppia di asserzioni positiva e negativa rende
+     * osservabile che la ricerca opera sulla componente valore; la sola ricerca
+     * positiva non escluderebbe una scansione indiscriminata di chiavi e valori.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce {@code "key"="value"} e cerca entrambe le stringhe come valori.
+     * Il test inserisce {@code "key"="value"}, chiama
+     * {@code containsValue("value")} e successivamente
+     * {@code containsValue("key")}, verificando entrambi i risultati.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene un mapping con chiave e valore distinti.
+     * La fixture è inizialmente vuota; prima delle ricerche viene popolata con
+     * un mapping la cui chiave e il cui valore sono distinti e non nulli.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -367,19 +421,25 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * Un oggetto ordinario viene memorizzato come valore, mentre la ricerca usa
      * un {@link AsymmetricEqualsProbe} che riconosce per identità soltanto tale
-     * oggetto. Il confronto è intenzionalmente asimmetrico: può riuscire solo
-     * chiamando {@code equals} sul valore cercato, come stabilito dal contratto
-     * J2SE 1.4.2 di {@code Map.containsValue}.
+     * oggetto. Il confronto è intenzionalmente asimmetrico: il risultato può
+     * essere positivo solo chiamando {@code equals} sull'argomento cercato, come
+     * richiede il contratto J2SE 1.4.2. Il test è stato scelto perché due
+     * stringhe, avendo un'uguaglianza simmetrica, non permetterebbero di rilevare
+     * l'inversione degli operandi. Dimensione e identità completano il controllo
+     * escludendo alterazioni durante la ricerca.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce l'oggetto {@code stored} e lo cerca tramite {@code searched};
-     * controlla poi dimensione e identità del valore memorizzato.
+     * Il test crea l'oggetto {@code stored}, costruisce {@code searched} come
+     * probe che riconosce quel riferimento e inserisce {@code stored} con chiave
+     * {@code "key"}. Poi esegue la ricerca, misura la dimensione e confronta per
+     * identità il valore ancora associato alla chiave.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene un solo mapping il cui valore è l'oggetto riconosciuto
-     * dal probe.
+     * La fixture è stata inizializzata vuota; prima della ricerca contiene un
+     * solo mapping il cui valore è il riferimento riconosciuto dal probe usato
+     * come argomento di {@code containsValue}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -413,16 +473,23 @@ public class MapAdapterTest {
      * Questa volta il probe asimmetrico è il valore memorizzato e riconosce
      * l'oggetto cercato. L'oggetto cercato, invece, non riconosce il probe. Se
      * l'implementazione invocasse erroneamente {@code equals} sul valore
-     * contenuto nella mappa, il test produrrebbe un falso positivo.
+     * contenuto nella mappa, il test produrrebbe un falso positivo. Questo caso
+     * negativo è stato affiancato al precedente perché, insieme, i due casi
+     * discriminano entrambe le direzioni del confronto. Le asserzioni su
+     * dimensione e identità verificano inoltre che la ricerca sia non mutativa.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Memorizza {@code stored}, cerca {@code searched} e controlla che il
-     * mapping originario sia ancora presente per identità.
+     * Il test crea prima {@code searched} e poi il probe {@code stored} che lo
+     * riconosce, memorizza il probe con chiave {@code "key"} ed esegue
+     * {@code containsValue(searched)}. Infine controlla dimensione e identità
+     * del valore recuperato dalla mappa.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene un probe con confronto asimmetrico come unico valore.
+     * La fixture è inizialmente vuota; prima della ricerca contiene il probe
+     * asimmetrico come unico valore, mentre l'argomento cercato è un oggetto
+     * distinto e non nullo.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -432,7 +499,9 @@ public class MapAdapterTest {
      *
      * <p><b>Expected Results:</b>
      * {@code containsValue(searched)} restituisce {@code false}; la
-     * corrispondenza ottenibile solo con il confronto inverso viene ignorata.
+     * corrispondenza ottenibile solo con il confronto inverso viene ignorata, la
+     * dimensione resta {@code 1} e {@code get("key")} restituisce lo stesso
+     * riferimento memorizzato.
      * </p>
      */
     @Test
@@ -453,18 +522,24 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Test Case Design:</b>
-     * La mappa viene prima popolata con un mapping valido. Oltre al tipo esatto
-     * dell'eccezione, vengono quindi controllati dimensione e valore per
-     * assicurarsi che la ricerca non produca modifiche collaterali.
+     * La mappa viene prima popolata con un mapping valido. Oltre alla categoria
+     * dell'eccezione, vengono quindi controllati dimensione e valore. Il caso è
+     * stato scelto per verificare il vincolo specifico di {@code Hashtable} sui
+     * valori nulli; l'uso di una mappa non vuota permette anche di osservare che
+     * la ricerca eccezionale non produca modifiche collaterali.
      * </p>
      *
      * <p><b>Test Description:</b>
      * Inserisce {@code "key"="value"}, invoca {@code containsValue(null)} e
-     * intercetta l'eccezione attesa.
+     * intercetta l'eccezione attesa. Un ritorno normale provoca {@code fail()};
+     * nel blocco {@code catch} il test controlla dimensione e valore del mapping
+     * preparato.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene un mapping valido e non nullo.
+     * JUnit ha predisposto una fixture vuota; prima della chiamata oggetto del
+     * test viene inserito un mapping valido e l'argomento di ricerca è
+     * {@code null}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -472,8 +547,10 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * Viene sollevata esattamente una {@link NullPointerException}; la dimensione
-     * resta {@code 1} e la chiave continua a essere associata a {@code "value"}.
+     * La chiamata trasferisce il controllo al blocco compatibile con
+     * {@link NullPointerException}, senza raggiungere {@code fail()}; la
+     * dimensione resta {@code 1} e {@code get("key")} restituisce
+     * {@code "value"}.
      * </p>
      */
     @Test
@@ -497,16 +574,20 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * Si parte da una mappa non vuota per poter osservare esplicitamente
      * l'assenza di effetti collaterali dopo l'errore, oltre a controllare il tipo
-     * dell'eccezione.
+     * dell'eccezione. La chiave valida {@code "a"} e quella nulla isolano il
+     * confine tra una lettura ordinaria e l'input non ammesso dall'adaptee.
      * </p>
      *
      * <p><b>Test Description:</b>
      * Inserisce {@code "a"="1"}, invoca {@code get(null)} e verifica il
-     * contenuto dopo aver intercettato l'eccezione.
+     * contenuto dopo aver intercettato l'eccezione. Se la chiamata termina senza
+     * eccezioni, il test esegue {@code fail()}; nel blocco {@code catch} misura la
+     * dimensione e rilegge la chiave valida.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene un unico mapping valido.
+     * La fixture è creata vuota; prima di {@code get(null)} il test vi inserisce
+     * l'unico mapping valido {@code "a"="1"}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -514,9 +595,9 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * {@code get(null)} solleva esattamente una {@link NullPointerException}; la
-     * dimensione vale ancora {@code 1} e {@code get("a")} restituisce
-     * {@code "1"}.
+     * {@code get(null)} trasferisce il controllo al blocco che intercetta
+     * {@link NullPointerException}; la dimensione vale ancora {@code 1} e
+     * {@code get("a")} restituisce {@code "1"}.
      * </p>
      */
     @Test
@@ -540,16 +621,20 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * La fixture contiene già una coppia valida, così il test può distinguere il
      * semplice lancio dell'eccezione da un comportamento che danneggia lo stato
-     * della mappa.
+     * della mappa. Questo caso è separato da {@code get(null)} perché ogni
+     * operazione di ricerca espone un proprio punto del contratto pubblico e può
+     * delegare in modo diverso all'oggetto adattato.
      * </p>
      *
      * <p><b>Test Description:</b>
      * Dopo aver inserito {@code "a"="1"}, invoca {@code containsKey(null)} e
-     * controlla nuovamente dimensione e valore associato.
+     * controlla nuovamente dimensione e valore associato. {@code fail()} rende
+     * esplicito il fallimento in caso di ritorno normale.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene esattamente il mapping {@code "a"="1"}.
+     * JUnit ha creato una mappa vuota; prima della ricerca il test stabilisce il
+     * mapping {@code "a"="1"} e usa {@code null} come chiave da cercare.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -557,8 +642,9 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * Viene sollevata esattamente una {@link NullPointerException}; dimensione e
-     * valore del mapping rimangono invariati.
+     * {@code containsKey(null)} provoca una {@link NullPointerException} e non
+     * raggiunge {@code fail()}; {@code size()} restituisce {@code 1} e
+     * {@code get("a")} restituisce {@code "1"}.
      * </p>
      */
     @Test
@@ -582,16 +668,21 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * Una mappa già popolata permette di controllare che l'operazione non
      * interpreti {@code null} come una richiesta generica di rimozione e che
-     * l'eccezione lasci intatto il contenuto.
+     * l'eccezione lasci intatto il contenuto. Il caso è mantenuto distinto dalle
+     * ricerche con chiave nulla perché {@code remove} è un'operazione mutativa e
+     * richiede una verifica esplicita contro la perdita di dati.
      * </p>
      *
      * <p><b>Test Description:</b>
      * Inserisce {@code "a"="1"}, chiama {@code remove(null)} e verifica il
-     * mapping dopo la gestione dell'eccezione.
+     * mapping dopo la gestione dell'eccezione. Se non viene lanciata alcuna
+     * eccezione, {@code fail()} interrompe il test; nel blocco {@code catch}
+     * vengono controllati dimensione e valore.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene un unico mapping valido.
+     * La fixture è inizialmente vuota; prima della rimozione il test vi inserisce
+     * l'unico mapping valido {@code "a"="1"} e prepara una chiave nulla.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -599,7 +690,7 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * {@code remove(null)} solleva esattamente una
+     * {@code remove(null)} trasferisce il controllo al blocco che intercetta
      * {@link NullPointerException}; la dimensione resta {@code 1} e il valore
      * associato a {@code "a"} resta {@code "1"}.
      * </p>
@@ -624,16 +715,20 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * Il test controlla sia il valore restituito da {@code remove} sia la
      * scomparsa della chiave e lo stato di vuoto. Queste verifiche distinguono
-     * una rimozione effettiva dalla sola restituzione del valore precedente.
+     * una rimozione effettiva dalla sola restituzione del valore precedente. Si
+     * parte da un unico mapping per rendere deterministica la post-condizione di
+     * mappa vuota e collegarla direttamente alla rimozione eseguita.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce {@code "a"="1"} e rimuove il mapping mediante la chiave
-     * {@code "a"}.
+     * Il test inserisce {@code "a"="1"}, invoca {@code remove("a")} e confronta
+     * il valore restituito con {@code "1"}. Poi verifica che la chiave non sia più
+     * contenuta e che la mappa risulti vuota.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene soltanto {@code "a"="1"}.
+     * La fixture nasce vuota; immediatamente prima di {@code remove} contiene
+     * soltanto il mapping non nullo {@code "a"="1"}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -662,15 +757,20 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * La chiave cercata è diversa da quella memorizzata. Vengono controllati il
      * valore di ritorno, la dimensione e il mapping esistente per dimostrare che
-     * l'operazione non produce effetti collaterali.
+     * l'operazione non produce effetti collaterali. Il caso è necessario come
+     * complemento alla rimozione presente: un'implementazione potrebbe gestire
+     * correttamente la chiave trovata ma alterare lo stato quando la chiave manca.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce {@code "a"="1"} e invoca {@code remove("b")}.
+     * Il test inserisce {@code "a"="1"}, invoca {@code remove("b")} e confronta
+     * il ritorno con {@code null}. In seguito misura la dimensione e legge il
+     * mapping originario.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene soltanto la chiave {@code "a"}; {@code "b"} è assente.
+     * La fixture è stata creata vuota; prima della chiamata contiene soltanto la
+     * chiave {@code "a"}, mentre la chiave non nulla {@code "b"} è assente.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -698,16 +798,20 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * Si usano due chiavi distinte per evitare che il controllo coincida con il
      * caso più semplice di una singola rimozione. La dimensione e l'assenza di
-     * entrambe le chiavi confermano lo svuotamento completo.
+     * entrambe le chiavi confermano lo svuotamento completo. Questo caso è stato
+     * scelto separatamente da {@code remove}, poiché {@code clear} deve operare
+     * sull'intero contenuto senza ricevere una chiave specifica.
      * </p>
      *
      * <p><b>Test Description:</b>
      * Inserisce {@code "a"="1"} e {@code "b"="2"}, quindi invoca
-     * {@code clear()}.
+     * {@code clear()}. Dopo lo svuotamento misura la dimensione e cerca
+     * separatamente entrambe le chiavi iniziali.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene due mapping distinti.
+     * La fixture nasce vuota; prima di {@code clear()} il test vi prepara due
+     * mapping distinti con chiavi e valori non nulli.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -739,17 +843,22 @@ public class MapAdapterTest {
      * diversi; ciascuna possiede inoltre una chiave esclusiva. Questa
      * configurazione controlla nello stesso caso la sostituzione del valore
      * sovrapposto, l'aggiunta di un mapping nuovo e la conservazione del mapping
-     * già presente soltanto nella destinazione.
+     * già presente soltanto nella destinazione. Le tre asserzioni sui valori,
+     * insieme alla dimensione, sono state scelte per rendere osservabili tutte le
+     * categorie di chiavi coinvolte e non soltanto il numero finale di mapping.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Copia i mapping {@code "a"="1"} e {@code "b"="2"} in una mappa che
-     * contiene {@code "a"="old"} e {@code "c"="3"}.
+     * Il test crea la sorgente e vi inserisce {@code "a"="1"} e
+     * {@code "b"="2"}; prepara poi la fixture con {@code "a"="old"} e
+     * {@code "c"="3"}. Dopo {@code map.putAll(source)} controlla la dimensione
+     * e legge, una per una, le tre chiavi attese nella destinazione.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * Sorgente e destinazione sono mappe valide; la chiave {@code "a"} è
-     * presente in entrambe.
+     * JUnit ha creato una destinazione vuota; prima di {@code putAll}, il test ha
+     * predisposto due mappe valide e non nulle, con la chiave {@code "a"}
+     * presente in entrambe e con una chiave esclusiva per ciascuna.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -784,25 +893,33 @@ public class MapAdapterTest {
      *
      * <p><b>Test Case Design:</b>
      * Il riferimento nullo viene passato direttamente e l'eccezione attesa è
-     * dichiarata nell'annotazione JUnit. Il caso controlla il limite del
-     * contratto prima che possa iniziare l'iterazione sui mapping della sorgente.
+     * dichiarata nell'annotazione JUnit. Il caso è stato scelto per distinguere
+     * una sorgente inesistente da una sorgente valida ma vuota, verificata in un
+     * test separato. L'annotazione {@code expected} è sufficiente perché questo
+     * metodo intende osservare soltanto il rifiuto dell'argomento, non lo stato
+     * successivo della destinazione.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Invoca {@code putAll(null)} sulla fixture.
+     * Dopo l'esecuzione automatica di {@link #setUp()}, il test passa direttamente
+     * {@code null} a {@code putAll}; JUnit confronta l'eccezione che termina il
+     * metodo con quella dichiarata nell'annotazione {@link Test}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La destinazione è una mappa valida e la sorgente non esiste.
+     * La destinazione è una mappa valida e vuota; il riferimento fornito al
+     * posto della sorgente vale {@code null}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
-     * L'operazione si interrompe prima di poter copiare un mapping.
+     * Il metodo di test termina mediante l'eccezione osservata da JUnit; non viene
+     * imposta né verificata un'ulteriore condizione sul contenuto della fixture.
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * JUnit rileva esattamente una {@link NullPointerException}; una conclusione
-     * normale del metodo rende il test fallito.
+     * La chiamata solleva una {@link NullPointerException} compatibile con il tipo
+     * dichiarato in {@code expected}; un ritorno normale o un'eccezione di tipo
+     * incompatibile rendono il test fallito.
      * </p>
      */
     @Test(expected = NullPointerException.class)
@@ -820,16 +937,20 @@ public class MapAdapterTest {
      * La mappa contiene due mapping e viene passata a se stessa. Il caso è utile
      * perché l'implementazione attraversa la sorgente mentre scrive nella
      * destinazione; dimensione e valori permettono di rilevare perdite o
-     * duplicazioni indesiderate.
+     * sostituzioni indesiderate. Sono stati scelti due mapping, invece di uno,
+     * per esercitare più di un passo dell'attraversamento senza introdurre
+     * dipendenze dall'ordine di enumerazione.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce due coppie e invoca {@code map.putAll(map)}.
+     * Il test inserisce {@code "a"="1"} e {@code "b"="2"}, passa la fixture
+     * stessa come argomento di {@code putAll}, quindi misura la dimensione e
+     * rilegge separatamente entrambi i valori.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La stessa istanza, usata come sorgente e destinazione, contiene
-     * {@code "a"="1"} e {@code "b"="2"}.
+     * La fixture nasce vuota; prima dell'operazione la stessa istanza, usata come
+     * sorgente e destinazione, contiene {@code "a"="1"} e {@code "b"="2"}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -860,16 +981,22 @@ public class MapAdapterTest {
      * Lo stesso caso limite viene applicato sia a {@code putAll} sia al
      * costruttore di copia. In questo modo si controlla che entrambi i percorsi
      * accettino una sorgente valida priva di mapping, senza confonderla con una
-     * sorgente {@code null}.
+     * sorgente {@code null}. La verifica di uguaglianza completa i due controlli
+     * di vuoto, assicurando che la copia rappresenti lo stesso contenuto logico
+     * della sorgente anche nel caso limite.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Copia una mappa vuota nella fixture e costruisce poi un nuovo
-     * {@link MapAdapter} a partire dalla stessa sorgente.
+     * Il test crea una sorgente vuota, la passa a {@code map.putAll(empty)} e
+     * verifica che la fixture sia vuota. Costruisce poi un nuovo
+     * {@link MapAdapter} dalla stessa sorgente, ne controlla lo stato di vuoto e
+     * infine confronta sorgente e copia con {@code equals}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * Sorgente e destinazione sono istanze valide e vuote.
+     * {@link #setUp()} ha creato una destinazione vuota e il test crea una seconda
+     * istanza valida, anch'essa vuota, da usare come sorgente comune alle due
+     * operazioni di copia.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -901,16 +1028,21 @@ public class MapAdapterTest {
      * Prima si confrontano sorgente e copia, poi si rimuove una chiave soltanto
      * dalla sorgente. Questa seconda fase è necessaria perché due mappe uguali
      * subito dopo la costruzione potrebbero ancora condividere erroneamente la
-     * stessa struttura interna.
+     * stessa struttura interna. Due mapping consentono di rimuoverne uno e
+     * verificare contemporaneamente che la copia mantenga sia quello rimosso sia
+     * una dimensione coerente con l'intero contenuto originario.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Copia una sorgente con due mapping, ne verifica l'uguaglianza e rimuove
-     * {@code "a"} soltanto dall'originale.
+     * Il test inserisce due mapping nella fixture, costruisce {@code copy} dalla
+     * fixture e verifica l'uguaglianza iniziale. Poi rimuove {@code "a"} soltanto
+     * dalla sorgente e controlla nella copia la presenza della chiave e la
+     * dimensione rimasta pari a due.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La sorgente contiene {@code "a"="1"} e {@code "b"="2"}.
+     * La fixture nasce vuota; prima della costruzione viene usata come sorgente e
+     * contiene i due mapping distinti {@code "a"="1"} e {@code "b"="2"}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -919,9 +1051,9 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * Le mappe risultano uguali subito dopo la copia; in seguito
-     * {@code copy.containsKey("a")} restituisce {@code true} e la dimensione
-     * della copia resta {@code 2}.
+     * {@code assertEquals(map, copy)} riesce subito dopo la costruzione; dopo la
+     * modifica della sorgente, {@code copy.containsKey("a")} restituisce
+     * {@code true} e {@code copy.size()} restituisce {@code 2}.
      * </p>
      */
     @Test
@@ -947,17 +1079,24 @@ public class MapAdapterTest {
      * costruttore della superclasse. Questo oggetto sentinella rende osservabile
      * una scelta progettuale importante: la copia deve inizializzare direttamente
      * il proprio stato, senza effettuare chiamate virtuali su un oggetto ancora
-     * incompleto.
+     * incompleto. I due mapping verificano che la costruzione copi realmente il
+     * contenuto anche senza passare dal metodo sovrascritto; l'aggiunta successiva
+     * alla sorgente controlla inoltre che il risultato sia strutturalmente
+     * indipendente.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Costruisce la sottoclasse da una sorgente con due mapping, ne controlla il
-     * contenuto e aggiunge poi un terzo mapping soltanto alla sorgente.
+     * Il test crea una sorgente con due mapping e la passa al costruttore della
+     * sottoclasse sentinella. Dopo la costruzione confronta le mappe e legge i due
+     * valori copiati. Infine inserisce {@code "c"="3"} nella sola sorgente e
+     * controlla assenza della chiave e dimensione della copia.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La sorgente contiene {@code "a"="1"} e {@code "b"="2"}; il flag della
-     * sottoclasse diventa vero soltanto dopo il ritorno da {@code super(source)}.
+     * La fixture predisposta da JUnit non è usata in questo caso; la sorgente
+     * locale contiene {@code "a"="1"} e {@code "b"="2"}. Il flag della
+     * sottoclasse è ancora falso durante {@code super(source)} e diventa vero
+     * soltanto dopo il ritorno dal costruttore della superclasse.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -967,8 +1106,9 @@ public class MapAdapterTest {
      *
      * <p><b>Expected Results:</b>
      * La costruzione termina senza {@link AssertionError}, copia e sorgente sono
-     * inizialmente uguali e l'aggiunta di {@code "c"="3"} alla sorgente non
-     * cambia la copia, la cui dimensione resta {@code 2}.
+     * inizialmente uguali, {@code get("a")} e {@code get("b")} restituiscono
+     * rispettivamente {@code "1"} e {@code "2"}; dopo la modifica della sorgente,
+     * la copia non contiene {@code "c"} e la sua dimensione resta {@code 2}.
      * </p>
      */
     @Test
@@ -996,23 +1136,31 @@ public class MapAdapterTest {
      * <p><b>Test Case Design:</b>
      * Il cast esplicito a {@link HMap} seleziona senza ambiguità il costruttore
      * di copia. L'eccezione è dichiarata nell'annotazione JUnit perché non è
-     * necessario eseguire altre verifiche dopo il tentativo di costruzione.
+     * necessario eseguire altre verifiche dopo il tentativo di costruzione. Il
+     * caso è distinto dalla copia di una mappa vuota per dimostrare che il
+     * costruttore riconosce la differenza tra un oggetto sorgente valido privo di
+     * mapping e l'assenza dell'oggetto stesso.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Tenta di creare un {@link MapAdapter} passando {@code null} come sorgente.
+     * Il test valuta l'espressione {@code new MapAdapter((HMap) null)}; il cast
+     * forza la selezione del costruttore di copia e JUnit confronta l'eccezione
+     * risultante con il tipo dichiarato nell'annotazione.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * Non è disponibile alcuna istanza sorgente da copiare.
+     * Il riferimento fornito come sorgente di tipo {@link HMap} vale
+     * {@code null}; non è richiesto alcuno stato della fixture.
      * </p>
      *
      * <p><b>Post-Condition:</b>
-     * Non viene restituita una nuova mappa valida.
+     * Il metodo di test termina mediante l'eccezione osservata da JUnit e non
+     * assegna ad alcun riferimento una nuova mappa.
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * La costruzione solleva esattamente una {@link NullPointerException}.
+     * La costruzione solleva una {@link NullPointerException}; un ritorno normale
+     * o un'eccezione incompatibile con tale tipo rendono il test fallito.
      * </p>
      */
     @Test(expected = NullPointerException.class)
@@ -1030,17 +1178,22 @@ public class MapAdapterTest {
      * Tre mappe distinte vengono popolate con lo stesso contenuto; nella seconda
      * l'ordine di inserimento è invertito. La scelta controlla sia le proprietà
      * generali di {@code equals} sia l'indipendenza dall'ordine non garantito da
-     * {@code Hashtable}.
+     * {@code Hashtable}. Una sola istanza è sufficiente per la riflessività,
+     * due direzioni di confronto sulla stessa coppia verificano la simmetria e la
+     * terza istanza rende possibile controllare esplicitamente la transitività.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Confronta la fixture con se stessa, confronta la prima e la seconda mappa
-     * in entrambe le direzioni e usa la terza per completare la verifica di
-     * transitività.
+     * Il test crea {@code second} e {@code third}, quindi popola tutte e tre le
+     * mappe con gli stessi due mapping, invertendo l'ordine in {@code second}.
+     * Confronta la fixture con se stessa, la fixture e {@code second} in entrambe
+     * le direzioni, poi {@code second} con {@code third} e infine la fixture con
+     * {@code third}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * Le tre istanze contengono i mapping {@code "a"="1"} e
+     * JUnit ha creato la fixture vuota e il test crea altre due mappe vuote; prima
+     * dei confronti, le tre istanze contengono {@code "a"="1"} e
      * {@code "b"="2"}, pur essendo state popolate in sequenze diverse.
      * </p>
      *
@@ -1049,8 +1202,9 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * Tutte le relazioni di uguaglianza controllate restituiscono
-     * {@code true}.
+     * Restituiscono {@code true} i cinque confronti eseguiti: riflessività della
+     * fixture, due direzioni tra fixture e {@code second}, uguaglianza tra
+     * {@code second} e {@code third} e uguaglianza tra fixture e {@code third}.
      * </p>
      */
     @Test
@@ -1081,17 +1235,22 @@ public class MapAdapterTest {
      * prima per chiave e poi per valore. Mantenere uguale la dimensione impedisce
      * che un controllo preliminare sul numero di elementi nasconda errori nel
      * confronto dei mapping. Si aggiungono inoltre i casi di tipo incompatibile
-     * e riferimento nullo.
+     * e riferimento nullo, scelti per coprire i rami esterni al dominio
+     * {@link HMap}. L'uso di quattro asserzioni separate permette di attribuire
+     * un eventuale fallimento alla specifica categoria di non uguaglianza.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Confronta {@code "a"="1"} con {@code "b"="1"}, con
-     * {@code "a"="different"}, con {@code null} e con una {@link String}.
+     * Il test prepara nella fixture {@code "a"="1"}, in {@code other}
+     * {@code "b"="1"} e in {@code sameKeyDifferentValue}
+     * {@code "a"="different"}. Poi confronta la fixture, nell'ordine, con le due
+     * mappe, con {@code null} e con la stringa {@code "not a map"}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * Ciascuna mappa contiene un solo mapping e gli oggetti di confronto sono
-     * distinti dalla fixture.
+     * La fixture e le due mappe locali sono istanze distinte e valide; prima dei
+     * confronti ciascuna contiene un solo mapping, mentre gli altri argomenti
+     * sono un riferimento nullo e un oggetto di tipo {@link String}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -1099,7 +1258,9 @@ public class MapAdapterTest {
      * </p>
      *
      * <p><b>Expected Results:</b>
-     * Ognuna delle quattro chiamate a {@code equals} restituisce {@code false}.
+     * Restituiscono {@code false} tutti e quattro i confronti: quello con chiave
+     * diversa, quello con valore diverso, quello con {@code null} e quello con
+     * l'oggetto che non implementa {@link HMap}.
      * </p>
      */
     @Test
@@ -1124,16 +1285,22 @@ public class MapAdapterTest {
      * Si usano due mapping formati da stringhe, i cui codici hash sono stabili e
      * possono essere combinati direttamente nel test. Il valore atteso viene
      * calcolato come somma dei codici delle entry, ciascuno ottenuto tramite XOR
-     * tra chiave e valore, secondo il contratto di {@code Map}.
+     * tra chiave e valore, secondo il contratto di {@code Map}. Calcolare
+     * l'oracolo nel test, senza riutilizzare {@code entrySet().hashCode()}, evita
+     * che lo stesso eventuale errore dell'implementazione influenzi sia il valore
+     * effettivo sia quello atteso.
      * </p>
      *
      * <p><b>Test Description:</b>
      * Inserisce {@code "a"="1"} e {@code "b"="2"}, calcola esplicitamente il
-     * risultato atteso e lo confronta con {@code map.hashCode()}.
+     * risultato atteso applicando XOR a ogni coppia e sommando i due contributi;
+     * infine confronta tale intero con il risultato di {@code map.hashCode()}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene due mapping con chiavi e valori non nulli.
+     * La fixture nasce vuota; prima del calcolo contiene due mapping con chiavi e
+     * valori non nulli, i cui metodi {@code hashCode} sono quelli di
+     * {@link String}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -1142,7 +1309,8 @@ public class MapAdapterTest {
      *
      * <p><b>Expected Results:</b>
      * Il codice restituito coincide con
-     * {@code (hash("a") ^ hash("1")) + (hash("b") ^ hash("2"))}.
+     * {@code ("a".hashCode() ^ "1".hashCode())
+     * + ("b".hashCode() ^ "2".hashCode())}.
      * </p>
      */
     @Test
@@ -1163,16 +1331,20 @@ public class MapAdapterTest {
      * Due istanze vengono popolate con gli stessi mapping in ordine opposto.
      * Prima si accerta la loro uguaglianza, poi si confrontano i codici hash:
      * questa sequenza verifica direttamente l'implicazione richiesta dal
-     * contratto degli oggetti uguali.
+     * contratto degli oggetti uguali. L'ordine invertito è stato scelto per non
+     * rendere il risultato dipendente dalla sequenza di inserimento o
+     * dall'ordine di enumerazione interno.
      * </p>
      *
      * <p><b>Test Description:</b>
      * Inserisce le coppie {@code "a"="1"} e {@code "b"="2"} nelle due mappe
-     * con ordine diverso e confronta uguaglianza e hash.
+     * con ordine diverso. Verifica prima {@code assertEquals(map, other)} e poi
+     * confronta gli interi restituiti dai due metodi {@code hashCode()}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * Le mappe sono istanze distinte ma contengono gli stessi mapping.
+     * La fixture e {@code other} sono istanze distinte; prima delle asserzioni
+     * contengono gli stessi due mapping, inseriti in sequenza opposta.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -1204,16 +1376,21 @@ public class MapAdapterTest {
      * Il test cerca separatamente le due sottostringhe {@code "a=1"} e
      * {@code "b=2"}, senza confrontare l'intera stringa. Questa scelta evita di
      * imporre un ordine che {@code Hashtable} non garantisce e concentra la
-     * verifica sulle informazioni effettivamente richieste.
+     * verifica sulle informazioni effettivamente richieste. Due mapping distinti
+     * sono stati scelti per dimostrare che la rappresentazione non si limita a un
+     * solo elemento; {@code indexOf >= 0} verifica la presenza senza introdurre
+     * assunzioni su parentesi, separatori o posizione.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Inserisce due mapping, ottiene il risultato di {@code toString()} e cerca
-     * al suo interno entrambe le forme {@code chiave=valore}.
+     * Il test inserisce {@code "a"="1"} e {@code "b"="2"}, salva il risultato di
+     * {@code toString()} in {@code representation} e applica separatamente
+     * {@code indexOf} alle sottostringhe {@code "a=1"} e {@code "b=2"}.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene {@code "a"="1"} e {@code "b"="2"}.
+     * La fixture nasce vuota; prima della conversione contiene esattamente i due
+     * mapping non nulli {@code "a"="1"} e {@code "b"="2"}.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -1222,7 +1399,8 @@ public class MapAdapterTest {
      *
      * <p><b>Expected Results:</b>
      * La rappresentazione contiene sia {@code "a=1"} sia {@code "b=2"}, in
-     * qualunque ordine.
+     * qualunque ordine; per entrambe le ricerche {@code indexOf} restituisce un
+     * indice maggiore o uguale a zero.
      * </p>
      */
     @Test

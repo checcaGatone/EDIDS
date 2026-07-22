@@ -21,25 +21,47 @@ import static org.junit.Assert.fail;
  *
  * <h2>Summary</h2>
  * <p>
- * La classe verifica la parte del contratto J2SE 1.4.2 relativa alle viste di
- * una mappa: collegamento con la mappa originale, operazioni di rimozione,
- * operazioni bulk, uguaglianza degli insiemi, gestione di {@code null},
- * operazioni di aggiunta non supportate e conversione in array. I controlli
- * distinguono {@code keySet()} ed {@code entrySet()}, che hanno semantica da
- * insieme, da {@code values()}, che può contenere valori duplicati.
+ * La suite verifica la parte del contratto J2SE 1.4.2 che riguarda le tre
+ * viste di una mappa. I test sono eseguiti con JUnit 4.13 e sono organizzati
+ * in categorie logiche descritte di seguito. La prima categoria controlla il
+ * <em>backing</em>: le modifiche effettuate sulla mappa devono comparire nelle
+ * viste già ottenute e le rimozioni eseguite attraverso una vista devono
+ * modificare la stessa mappa. La seconda categoria riguarda le rimozioni
+ * singole e le operazioni bulk, comprese le chiamate che ricevono la stessa
+ * vista come argomento e i casi in cui nessun elemento viene modificato. La
+ * terza categoria verifica {@code null} e le operazioni di aggiunta non
+ * supportate, controllando anche che gli errori non lascino modifiche
+ * parziali. La quarta categoria esamina appartenenza, direzione di
+ * {@code equals()}, uguaglianza e codice hash, distinguendo
+ * {@code keySet()} ed {@code entrySet()}, che sono insiemi, da
+ * {@code values()}, che è una collezione e conserva i duplicati. L'ultima
+ * categoria verifica entrambe le forme di {@code toArray()}, inclusi riuso,
+ * allocazione, compatibilità del tipo runtime e gestione della coda libera.
  * </p>
  *
  * <h2>Test Case Design</h2>
  * <p>
- * Ogni test parte da una nuova mappa con i mapping {@code a=1} e {@code b=2}.
- * Due elementi sono sufficienti per verificare sia modifiche parziali sia
- * operazioni che svuotano la struttura; quando servono duplicati viene
- * aggiunto {@code c=1}. Le asserzioni controllano insieme valore restituito,
- * contenuto della vista e stato della mappa, perché una vista backed non deve
- * aggiornarsi in modo indipendente. I confronti non assumono mai l'ordine di
- * iterazione della {@code Hashtable}. Oggetti di supporto con
- * {@code equals()} asimmetrico permettono inoltre di verificare la direzione
- * esatta del confronto, senza basarsi soltanto su {@link String}.
+ * La fixture ricrea prima di ogni metodo i mapping {@code a=1} e
+ * {@code b=2}. Due mapping distinti rendono osservabili sia una modifica
+ * parziale sia lo svuotamento completo, senza introdurre dati non necessari;
+ * nei test in cui conta la molteplicità viene aggiunto {@code c=1}, così il
+ * valore {@code 1} compare due volte pur essendo associato a chiavi diverse.
+ * Le viste vengono acquisite prima della mutazione quando occorre distinguere
+ * una vista backed da una copia. Per le operazioni mutative il risultato
+ * booleano è controllato insieme a dimensione, mapping e contenuto delle
+ * viste: il solo valore restituito non sarebbe sufficiente a escludere una
+ * modifica parziale o applicata alla struttura sbagliata. Gli scenari con la
+ * stessa vista come sorgente e destinazione verificano i casi di aliasing
+ * senza attribuire all'implementazione uno specifico ordine di iterazione.
+ * Gli oggetti probe rendono intenzionalmente asimmetrico {@code equals()} e
+ * permettono di stabilire quale operando riceve la chiamata, cosa che due
+ * stringhe ordinarie non renderebbero osservabile. Le conversioni in array
+ * controllano gli elementi per appartenenza, poiché l'adaptee
+ * {@code Hashtable} non garantisce l'ordine, e usano sentinelle nelle celle
+ * libere per distinguere il terminatore {@code null} dalla coda che deve
+ * restare invariata. Le classi e gli helper privati concentrano questi
+ * controlli ripetuti, ma ciascun test conserva pre-condizioni e risultati
+ * attesi specifici per la vista esercitata.
  * </p>
  *
  * @author Filippo Barban
@@ -49,13 +71,18 @@ import static org.junit.Assert.fail;
  * @see HSet
  */
 public class ViewsTest {
-    /** Mappa ricreata prima di ogni test con i mapping base della fixture. */
+    /**
+     * Mappa ricreata prima di ogni test; rappresenta la struttura backing
+     * comune alle viste esercitate dal singolo metodo.
+     */
     private HMap map;
 
     /**
      * Prepara una fixture indipendente contenente {@code a=1} e {@code b=2}.
-     * La ricostruzione evita che una rimozione effettuata da un test influenzi
-     * quelli eseguiti successivamente.
+     * Le due coppie rendono verificabili una rimozione selettiva e una
+     * successiva condizione residua. La ricostruzione prima di ogni metodo
+     * impedisce che le mutazioni, frequenti in questa suite, rendano i test
+     * dipendenti dall'ordine scelto da JUnit.
      */
     @Before
     public void setUp() {
@@ -66,19 +93,31 @@ public class ViewsTest {
 
     /**
      * <p><b>Summary:</b></p>
-     * <p>Verifica che un inserimento nella mappa sia visibile nelle viste già ottenute.</p>
+     * <p>Verifica il backing delle tre viste quando un mapping viene inserito
+     * direttamente nella mappa.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Le tre viste vengono salvate prima di inserire {@code c=3}, così il
-     * test distingue una vista backed da una copia creata al momento della chiamata.</p>
+     * <p>Le tre viste vengono salvate prima della mutazione: questa scelta
+     * rende osservabile la differenza tra una vista backed e una fotografia
+     * del contenuto. Il mapping {@code c=3} usa sia una chiave sia un valore
+     * nuovi, così ognuna delle tre ricerche identifica senza ambiguità
+     * l'inserimento appena eseguito.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Inserisce il nuovo mapping e ne cerca chiave, valore ed entry nelle
-     * rispettive viste preesistenti.</p>
+     * <p>Il test acquisisce nell'ordine {@code keySet()}, {@code values()} ed
+     * {@code entrySet()}; inserisce {@code c=3} mediante {@code put()}; infine
+     * cerca {@code c}, {@code 3} e una {@link EntryStub} equivalente nelle
+     * tre viste acquisite prima dell'inserimento.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>La fixture contiene {@code a=1} e {@code b=2}; le tre viste sono già state create.</p>
+     * <p>La fixture contiene esattamente {@code a=1} e {@code b=2}; le tre
+     * viste sono state ottenute e nessuna contiene elementi riferibili a
+     * {@code c=3}.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>La mappa contiene anche {@code c=3} e tutte le viste lo rappresentano.</p>
+     * <p>La mappa contiene anche {@code c=3}; gli stessi oggetti vista
+     * espongono rispettivamente la nuova chiave, il nuovo valore e la nuova
+     * coppia chiave-valore.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>Le tre ricerche restituiscono {@code true}.</p>
+     * <p>{@code keys.contains("c")}, {@code values.contains("3")} ed
+     * {@code entries.contains(new EntryStub("c", "3"))} restituiscono tutte
+     * {@code true}.</p>
      */
     @Test
     public void mapPutIsVisibleInPreviouslyObtainedViews() {
@@ -93,19 +132,29 @@ public class ViewsTest {
 
     /**
      * <p><b>Summary:</b></p>
-     * <p>Verifica la propagazione di {@code remove()} e {@code clear()} alle viste esistenti.</p>
+     * <p>Verifica che rimozione e svuotamento effettuati sulla mappa siano
+     * riflessi nelle tre viste già esistenti.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Le viste sono ottenute una sola volta e riutilizzate dopo entrambe le
-     * modifiche, per controllare che restino collegate alla stessa mappa.</p>
+     * <p>Le viste sono ottenute una sola volta e riutilizzate dopo due
+     * mutazioni consecutive. La rimozione selettiva di {@code a=1} controlla
+     * che spariscano insieme chiave, valore ed entry; il successivo
+     * {@code clear()} verifica lo stato limite vuoto senza creare nuove viste.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Rimuove {@code a=1}, controlla la sua assenza e poi svuota la mappa.</p>
+     * <p>Il test acquisisce le tre viste, rimuove {@code a} dalla mappa e
+     * controlla l'assenza di {@code a}, {@code 1} e {@code a=1}. In seguito
+     * invoca {@code map.clear()} e verifica {@code isEmpty()} sugli stessi
+     * tre riferimenti.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>La mappa contiene due mapping e le tre viste sono già disponibili.</p>
+     * <p>La mappa contiene {@code a=1} e {@code b=2}; chiavi, valori ed entry
+     * sono viste della medesima mappa e sono state acquisite prima delle
+     * mutazioni.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>La mappa e tutte le viste sono vuote.</p>
+     * <p>Dopo la rimozione {@code a=1} non è osservabile in alcuna vista;
+     * dopo lo svuotamento la mappa e tutte le viste preesistenti sono vuote.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>Il mapping rimosso scompare da ogni vista e, dopo {@code clear()},
-     * ciascuna vista segnala lo stato vuoto.</p>
+     * <p>Le tre chiamate {@code contains()} relative ad {@code a=1}
+     * restituiscono {@code false}; le tre successive chiamate
+     * {@code isEmpty()} restituiscono {@code true}.</p>
      */
     @Test
     public void mapRemoveAndClearAreVisibleInExistingViews() {
@@ -126,16 +175,25 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica che la rimozione da {@code keySet()} aggiorni la mappa.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Confronta una chiave presente con una assente e controlla sia il
-     * valore booleano sia la dimensione finale.</p>
+     * <p>La chiave presente {@code a} copre il ramo che modifica la vista,
+     * mentre {@code missing} copre il ramo senza effetto. Il valore booleano
+     * viene affiancato ai controlli sulla chiave della mappa e sulla dimensione,
+     * per escludere sia un risultato errato sia una rimozione non propagata.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Rimuove {@code a} dalla vista e tenta poi di rimuovere {@code missing}.</p>
+     * <p>Il test rimuove {@code a} da {@code keySet()}, verifica nella mappa
+     * che la chiave non esista più e che resti un solo mapping, quindi tenta
+     * di rimuovere la chiave assente {@code missing}.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>La fixture contiene le chiavi {@code a} e {@code b}.</p>
+     * <p>La mappa ha dimensione due e contiene le sole chiavi {@code a} e
+     * {@code b}; {@code missing} non appartiene alla vista.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>Rimane soltanto il mapping associato a {@code b}.</p>
+     * <p>Il mapping {@code a=1} è stato eliminato attraverso la vista e la
+     * mappa conserva il solo mapping associato a {@code b}; il tentativo su
+     * {@code missing} non introduce ulteriori modifiche.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>La prima rimozione restituisce {@code true}, la seconda {@code false}.</p>
+     * <p>La prima {@code remove()} restituisce {@code true},
+     * {@code map.containsKey("a")} restituisce {@code false}, la dimensione
+     * vale uno e la seconda {@code remove()} restituisce {@code false}.</p>
      */
     @Test
     public void keySetRemoveUpdatesMap() {
@@ -149,17 +207,25 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica il comportamento di {@code keySet().contains(null)}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>La mappa è popolata prima della chiamata per controllare anche
-     * l'assenza di modifiche collaterali dovute all'errore.</p>
+     * <p>La mappa è mantenuta non vuota per verificare due proprietà nella
+     * stessa prova: il tipo esatto dell'eccezione imposto dall'adaptee, che
+     * non ammette chiavi nulle, e l'assenza di modifiche collaterali. Il
+     * controllo di entrambi i mapping è più informativo della sola dimensione.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Ricerca una chiave {@code null} e intercetta l'eccezione prodotta
-     * dalla {@code Hashtable} sottostante.</p>
+     * <p>Il test invoca {@code keySet().contains(null)} dentro un blocco
+     * controllato; fallisce esplicitamente se la chiamata termina normalmente;
+     * nel ramo {@link NullPointerException} verifica dimensione e valori
+     * associati ad {@code a} e {@code b}.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>Sono presenti i due mapping validi della fixture.</p>
+     * <p>La fixture contiene due mapping con chiavi e valori non nulli e non
+     * contiene, per contratto della {@code Hashtable}, una chiave {@code null}.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>I due mapping restano invariati.</p>
+     * <p>Dopo l'eccezione la dimensione resta due e i mapping {@code a=1} e
+     * {@code b=2} conservano i rispettivi valori.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>Viene lanciata {@link NullPointerException} senza alterare la mappa.</p>
+     * <p>La chiamata lancia {@link NullPointerException}; nessuna esecuzione
+     * raggiunge {@code fail()} e tutte le asserzioni nel blocco
+     * {@code catch} hanno esito positivo.</p>
      */
     @Test
     public void keySetContainsNullThrowsAndPreservesMap() {
@@ -177,16 +243,23 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica il comportamento di {@code keySet().remove(null)}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Oltre al tipo di eccezione vengono ricontrollati entrambi i mapping,
-     * così un errore non può lasciare una modifica parziale.</p>
+     * <p>Il caso è separato dalla ricerca di {@code null} perché
+     * {@code remove()} è un'operazione mutativa. Oltre al tipo di eccezione
+     * vengono controllati dimensione e valori di entrambi i mapping, così
+     * un errore non può mascherare una rimozione parziale.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Tenta di rimuovere la chiave {@code null} dalla vista delle chiavi.</p>
+     * <p>Il test tenta {@code keySet().remove(null)}, invoca {@code fail()} se
+     * non viene segnalato l'errore e, dopo aver intercettato
+     * {@link NullPointerException}, ricontrolla dimensione e coppie della fixture.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene {@code a=1} e {@code b=2}.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>La fixture conserva dimensione e contenuto iniziali.</p>
+     * <p>La vista e la mappa conservano implicitamente le due chiavi; in modo
+     * esplicito la mappa mantiene dimensione due e i valori {@code 1} e
+     * {@code 2} associati alle chiavi originarie.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>Viene lanciata {@link NullPointerException} e nessun mapping è rimosso.</p>
+     * <p>Viene intercettata {@link NullPointerException}; le tre asserzioni
+     * sullo stato iniziale risultano vere e nessun mapping è rimosso.</p>
      */
     @Test
     public void keySetRemoveNullThrowsAndPreservesMap() {
@@ -204,17 +277,27 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica la rimozione di una sola occorrenza da {@code values()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Il valore {@code 1} è associato a due chiavi per mostrare la
-     * differenza tra una collection di valori e un insieme.</p>
+     * <p>Il mapping aggiuntivo {@code c=1} fa comparire due volte il valore
+     * {@code 1}; questa scelta distingue la semantica di
+     * {@code Collection.remove()}, che elimina una sola occorrenza, da quella
+     * di un insieme. Il successivo valore {@code missing} copre il caso senza
+     * corrispondenze e permette di verificare anche il risultato booleano falso.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Rimuove {@code 1}, verifica che un duplicato rimanga e prova infine
-     * a rimuovere un valore assente.</p>
+     * <p>Il test aggiunge {@code c=1}, rimuove il valore {@code 1} attraverso
+     * {@code values()}, controlla che la dimensione passi da tre a due e che
+     * un'altra occorrenza di {@code 1} rimanga, quindi tenta la rimozione di
+     * {@code missing}.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>Tre mapping sono presenti e due hanno valore {@code 1}.</p>
+     * <p>Subito prima della rimozione la mappa contiene tre mapping; due
+     * mapping distinti hanno valore {@code 1} e nessuno ha valore
+     * {@code missing}.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>Rimangono due mapping, uno dei quali conserva il valore {@code 1}.</p>
+     * <p>Rimangono due mapping e almeno uno conserva il valore {@code 1}; il
+     * tentativo sul valore assente non cambia ulteriormente la collezione.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>La rimozione presente restituisce {@code true}; quella assente restituisce {@code false}.</p>
+     * <p>La prima rimozione restituisce {@code true}, la dimensione vale due,
+     * {@code map.containsValue("1")} resta {@code true} e la rimozione di
+     * {@code missing} restituisce {@code false}.</p>
      */
     @Test
     public void valuesRemoveDeletesOnlyOneDuplicateMapping() {
@@ -229,17 +312,27 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica la direzione di {@code equals()} usata da {@code values().remove()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Il valore memorizzato rifiuta ogni confronto, mentre l'argomento di
-     * rimozione riconosce quel tipo: solo la direzione prescritta può riuscire.</p>
+     * <p>Il valore memorizzato {@link StoredRejectingValue} restituisce sempre
+     * {@code false}, mentre l'argomento {@link MatchingRemovalProbe} riconosce
+     * proprio quel tipo. Con questa asimmetria la rimozione può riuscire solo
+     * se viene valutato {@code removalArgument.equals(storedValue)}; oggetti
+     * con uguaglianza simmetrica non permetterebbero di rilevare tale scelta.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Inserisce un valore sentinella e lo rimuove con un probe diverso ma corrispondente.</p>
+     * <p>Il test crea una mappa locale, associa a {@code key} un
+     * {@code StoredRejectingValue}, invoca {@code values().remove()} con un
+     * {@code MatchingRemovalProbe} e controlla risultato, stato vuoto e
+     * assenza della chiave originaria.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>La mappa locale contiene un solo mapping.</p>
+     * <p>La mappa locale contiene il solo mapping formato dalla chiave
+     * {@code key} e da un valore che non considera uguale alcun oggetto.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>La mappa locale è vuota.</p>
+     * <p>Il mapping selezionato dal probe è rimosso; la mappa locale ha
+     * dimensione zero e non contiene più {@code key}.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>{@code remove()} restituisce {@code true} perché invoca
-     * {@code equals()} sull'argomento ricevuto.</p>
+     * <p>{@code remove()} restituisce {@code true}, {@code isEmpty()}
+     * restituisce {@code true} e {@code containsKey("key")} restituisce
+     * {@code false}; tali risultati sono possibili nella direzione di
+     * confronto progettata dal test.</p>
      */
     @Test
     public void valuesRemoveInvokesEqualsOnRemovalArgument() {
@@ -255,16 +348,25 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Esclude che {@code values().remove()} usi il confronto nella direzione inversa.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Il valore memorizzato riconosce il probe, ma il probe non riconosce il
-     * valore: il risultato cambierebbe se fosse interrogato l'oggetto sbagliato.</p>
+     * <p>Questo caso è il complemento del precedente: il valore memorizzato
+     * {@link StoredMatchingValue} riconosce il probe, mentre
+     * {@link RejectingRemovalProbe} rifiuta ogni oggetto. Se
+     * l'implementazione invocasse {@code storedValue.equals(argument)}, il
+     * mapping sarebbe rimosso e il test fallirebbe.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Tenta la rimozione e verifica identità e presenza del valore originale.</p>
+     * <p>Il test salva il riferimento del valore, lo inserisce sotto
+     * {@code key}, tenta di rimuoverlo tramite un
+     * {@code RejectingRemovalProbe}, quindi controlla il risultato falso, la
+     * dimensione uno e l'identità del valore ancora associato alla chiave.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>La mappa locale contiene il solo valore con confronto asimmetrico.</p>
+     * <p>La mappa locale contiene un solo mapping; il valore memorizzato
+     * accetterebbe il probe, ma il probe non accetta il valore.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>Il mapping originale rimane invariato.</p>
+     * <p>La mappa locale conserva un mapping e {@code key} continua a essere
+     * associata allo stesso riferimento memorizzato prima della chiamata.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>{@code remove()} restituisce {@code false} e conserva lo stesso riferimento.</p>
+     * <p>{@code remove()} restituisce {@code false}, la dimensione resta uno
+     * e {@code assertSame(stored, local.get("key"))} ha esito positivo.</p>
      */
     @Test
     public void valuesRemoveDoesNotInvokeEqualsOnStoredValue() {
@@ -281,17 +383,27 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica la direzione di {@code equals()} nella vista {@code values()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Un confronto asimmetrico riesce soltanto dal valore cercato verso il
-     * valore memorizzato, rendendo osservabile la direzione della chiamata.</p>
+     * <p>Un oggetto ordinario viene memorizzato e un
+     * {@link AsymmetricContainsProbe} lo riconosce esclusivamente per
+     * identità. Poiché l'oggetto memorizzato non riconosce il probe, il
+     * risultato vero dimostra la direzione usata dalla delega a
+     * {@link HMap#containsValue(Object)} senza affidarsi a un {@code equals()}
+     * simmetrico.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Cerca dalla vista un probe che riconosce il riferimento memorizzato.</p>
+     * <p>Il test inserisce sotto {@code key} un riferimento salvato in
+     * {@code stored}; costruisce un probe collegato a quel riferimento;
+     * esegue {@code values().contains(probe)} e ricontrolla dimensione e
+     * identità del valore nella mappa.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>La mappa locale contiene un solo mapping con valore non {@code null}.</p>
+     * <p>La mappa locale contiene un solo valore non nullo; il probe è un
+     * oggetto diverso ma il suo {@code equals()} accetta esattamente il
+     * riferimento memorizzato.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>Dimensione e riferimento memorizzato restano invariati.</p>
+     * <p>La ricerca non modifica la mappa: la dimensione resta uno e
+     * {@code key} conserva lo stesso oggetto {@code stored}.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>{@code values().contains()} restituisce {@code true}, coerentemente
-     * con la delega a {@link HMap#containsValue(Object)}.</p>
+     * <p>{@code values().contains(probe)} restituisce {@code true}; le
+     * asserzioni successive confermano dimensione uno e identità del valore.</p>
      */
     @Test
     public void valuesContainsUsesContainsValueEqualityDirection() {
@@ -309,16 +421,26 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica i criteri di appartenenza di {@code entrySet()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Confronta una entry equivalente con entry che differiscono per valore
-     * o chiave e con un oggetto che non implementa {@link HMap.Entry}.</p>
+     * <p>Quattro input isolano le condizioni del confronto: {@code a=1}
+     * coincide completamente, {@code a=2} mantiene solo la chiave,
+     * {@code missing=1} mantiene solo il valore e {@code "a=1"} non
+     * implementa {@link HMap.Entry}. Questa partizione impedisce che
+     * {@code contains()} accetti una corrispondenza parziale o un tipo errato.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Interroga la vista con quattro rappresentanti dei principali casi di confronto.</p>
+     * <p>Il test interroga la stessa {@code entrySet()} prima con una
+     * {@link EntryStub} equivalente al mapping {@code a=1}, poi con una entry
+     * dal valore diverso, con una entry dalla chiave assente e infine con una
+     * stringa che ne imita soltanto la rappresentazione testuale.</p>
      * <p><b>Pre-Condition:</b></p>
-     * <p>La fixture contiene il mapping {@code a=1}.</p>
+     * <p>La fixture contiene {@code a=1} e {@code b=2}; nessuna chiave
+     * {@code missing} è presente e gli elementi della vista implementano
+     * {@link HMap.Entry}.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>La mappa non viene modificata.</p>
+     * <p>Le quattro interrogazioni non modificano i due mapping della fixture.</p>
      * <p><b>Expected Results:</b></p>
-     * <p>Soltanto l'entry con chiave e valore corrispondenti viene riconosciuta.</p>
+     * <p>Il primo {@code contains()} restituisce {@code true}; i tre controlli
+     * con valore errato, chiave assente e tipo non-entry restituiscono
+     * {@code false}.</p>
      */
     @Test
     public void entrySetContainsRequiresMatchingKeyAndValue() {
@@ -333,9 +455,13 @@ public class ViewsTest {
      * <p>Verifica che {@code entrySet().remove()} richieda la corrispondenza completa.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Due entry hanno la stessa chiave, ma solo una possiede anche il valore
-     * corrente; in questo modo si evita una rimozione basata sulla sola chiave.</p>
+     * corrente; in questo modo si evita una rimozione basata sulla sola chiave.
+     * La presenza di {@code a} viene controllata tra i due tentativi, così il
+     * secondo risultato non può nascondere un'errata rimozione anticipata.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Tenta prima la rimozione di {@code a=2} e poi quella di {@code a=1}.</p>
+     * <p>Il test tenta prima di rimuovere {@code a=2}, verifica che
+     * {@code a} sia ancora nella mappa, rimuove poi l'entry corretta
+     * {@code a=1} e controlla infine l'assenza della chiave.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Il mapping corrente per {@code a} è {@code a=1}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -356,9 +482,14 @@ public class ViewsTest {
      * <p>Verifica che {@code clear()} sulla vista dei valori svuoti la mappa backing.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Le tre viste sono conservate prima dello svuotamento e controllate
-     * dopo l'operazione, così si osserva la propagazione in entrambe le direzioni.</p>
+     * dopo l'operazione. Si sceglie {@code values()} come punto di mutazione
+     * per dimostrare che anche la vista priva di semantica da insieme può
+     * svuotare l'unica struttura backing; dimensione e quattro controlli di
+     * vuoto rendono congiunta la verifica.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Invoca {@code values().clear()} e interroga mappa, chiavi, valori ed entry.</p>
+     * <p>Il test acquisisce chiavi, valori ed entry, invoca
+     * {@code values.clear()}, quindi controlla nell'ordine lo stato vuoto
+     * della mappa e delle tre viste e verifica che la dimensione sia zero.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene due mapping e tutte le viste sono già state ottenute.</p>
      * <p><b>Post-Condition:</b></p>
@@ -383,10 +514,15 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica {@code clear()} attraverso {@code keySet()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Usa una mappa locale popolata per controllare esplicitamente anche le
-     * viste dei valori e delle entry già create.</p>
+     * <p>Una mappa locale costruita da {@link #populatedMap()} isola questo
+     * scenario dalla fixture condivisa. Tutte le viste sono acquisite prima
+     * di {@code clear()}, perché crearle dopo lo svuotamento non proverebbe il
+     * loro aggiornamento; il caso completa separatamente il percorso mutativo
+     * offerto da {@code keySet()}.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Svuota la vista delle chiavi e osserva tutti gli oggetti collegati.</p>
+     * <p>Il test crea la mappa locale, memorizza i tre riferimenti alle viste,
+     * esegue {@code keys.clear()} e controlla che mappa, chiavi, valori ed
+     * entry siano vuoti e che la dimensione della mappa valga zero.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa locale contiene due mapping.</p>
      * <p><b>Post-Condition:</b></p>
@@ -412,10 +548,14 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica {@code clear()} attraverso {@code entrySet()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Il caso completa il controllo delle tre possibili viste e assicura
-     * che anche la vista delle entry agisca direttamente sulla mappa.</p>
+     * <p>Il caso completa il controllo dei tre punti di accesso a
+     * {@code clear()}. Una mappa locale con due mapping e viste create prima
+     * della chiamata permette di verificare che {@code entrySet()} agisca
+     * sulla struttura condivisa e non soltanto sul proprio oggetto vista.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Svuota {@code entrySet()} e controlla la mappa e le viste preesistenti.</p>
+     * <p>Il test costruisce la mappa locale, acquisisce le tre viste, invoca
+     * {@code entries.clear()} e controlla in sequenza lo stato vuoto dei
+     * quattro oggetti osservabili e la dimensione zero.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa locale contiene due mapping.</p>
      * <p><b>Post-Condition:</b></p>
@@ -442,9 +582,16 @@ public class ViewsTest {
      * <p>Verifica {@code removeAll()} e {@code retainAll()} sulla vista delle chiavi.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>La collezione di selezione è costruita come un altro {@code keySet()}:
-     * prima identifica la chiave da rimuovere, poi quella da conservare.</p>
+     * prima identifica la chiave {@code a} da rimuovere, poi, dopo essere
+     * stata ricostruita, la chiave {@code b} da conservare. L'inserimento
+     * intermedio di {@code c=3} assicura che {@code retainAll()} debba
+     * eliminare un elemento e non possa restituire {@code true} senza effetto.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Rimuove {@code a}, aggiunge {@code c} e conserva infine soltanto {@code b}.</p>
+     * <p>Il test crea una selezione contenente {@code a}, esegue
+     * {@code removeAll()} e verifica l'assenza della chiave; aggiunge quindi
+     * {@code c=3}, sostituisce nella selezione {@code a} con {@code b},
+     * esegue {@code retainAll()} e controlla dimensione uno e presenza di
+     * {@code b}.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La fixture contiene le chiavi {@code a} e {@code b}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -471,9 +618,15 @@ public class ViewsTest {
      * <p>Verifica che {@code values().removeAll()} elimini tutte le occorrenze corrispondenti.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Due chiavi condividono il valore {@code 1}; il dato duplicato serve a
-     * distinguere l'operazione bulk dalla rimozione singola di {@code remove()}.</p>
+     * distinguere l'operazione bulk dalla rimozione singola di {@code remove()}.
+     * La sorgente contiene una sola occorrenza di {@code 1}: il risultato deve
+     * dipendere dall'appartenenza alla sorgente e rimuovere entrambi i mapping
+     * corrispondenti nella destinazione.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Usa una seconda vista dei valori come selezione e rimuove ogni {@code 1}.</p>
+     * <p>Il test aggiunge {@code c=1}, costruisce una seconda mappa con il
+     * valore {@code 1}, passa la relativa vista a {@code removeAll()} e
+     * verifica risultato vero, dimensione uno, permanenza di {@code b} e
+     * assenza completa del valore {@code 1}.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene tre mapping, due dei quali hanno valore {@code 1}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -498,9 +651,14 @@ public class ViewsTest {
      * <p><b>Test Case Design:</b></p>
      * <p>La selezione contiene una sola occorrenza di {@code 1}, mentre la
      * destinazione ne contiene due: il contratto considera l'appartenenza e
-     * non il numero di occorrenze nella collezione argomento.</p>
+     * non il numero di occorrenze nella collezione argomento. I controlli
+     * sulle tre chiavi distinguono i due mapping da conservare da
+     * {@code b=2}, che deve essere rimosso.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Conserva il valore {@code 1} nella vista della fixture.</p>
+     * <p>Il test aggiunge {@code c=1}, prepara una sorgente che espone il solo
+     * valore {@code 1}, invoca {@code values().retainAll()}, quindi controlla
+     * risultato vero, dimensione due, presenza di {@code a} e {@code c} e
+     * assenza di {@code b}.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Sono presenti {@code a=1}, {@code b=2} e {@code c=1}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -525,9 +683,15 @@ public class ViewsTest {
      * <p>Verifica {@code removeAll()} sulla vista delle entry.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>La selezione contiene una entry esatta e una con chiave corretta ma
-     * valore differente, per controllare che siano confrontati entrambi i componenti.</p>
+     * valore differente, per controllare che siano confrontati entrambi i
+     * componenti. Il terzo mapping {@code c=3}, non presente nella selezione,
+     * offre un secondo controllo positivo di conservazione e rende più
+     * evidente un'eventuale rimozione eccessiva.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Rimuove dalla mappa le entry presenti nella seconda vista.</p>
+     * <p>Il test aggiunge {@code c=3}, costruisce una selezione con
+     * {@code a=1} e {@code b=different}, invoca {@code removeAll()} sulla
+     * vista delle entry e verifica l'assenza di {@code a}, i valori invariati
+     * di {@code b} e {@code c} e la dimensione finale due.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La destinazione contiene tre mapping; solo {@code a=1} coincide completamente.</p>
      * <p><b>Post-Condition:</b></p>
@@ -553,9 +717,14 @@ public class ViewsTest {
      * <p>Verifica {@code retainAll()} sulla vista delle entry.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>La collezione argomento condivide due mapping completi e presenta per
-     * {@code b} un valore diverso, così il test verifica l'uguaglianza delle entry.</p>
+     * {@code b} un valore diverso. Le tre chiavi coprono quindi due
+     * corrispondenze complete e una corrispondenza della sola chiave,
+     * verificando che {@code retainAll()} usi l'uguaglianza integrale delle entry.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Conserva soltanto le entry che appartengono anche alla mappa di selezione.</p>
+     * <p>Il test aggiunge {@code c=3}, prepara la selezione
+     * {@code a=1}, {@code b=different}, {@code c=3}, invoca
+     * {@code retainAll()} e controlla i valori conservati di {@code a} e
+     * {@code c}, l'assenza di {@code b} e la dimensione due.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene {@code a=1}, {@code b=2} e {@code c=3}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -582,9 +751,14 @@ public class ViewsTest {
      * <p>Verifica i risultati {@code false} delle operazioni bulk sulle entry.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Per {@code removeAll()} non esistono entry coincidenti; per
-     * {@code retainAll()} la selezione è una copia completa della mappa.</p>
+     * {@code retainAll()} la selezione è una copia completa della mappa.
+     * I due scenari coprono entrambi i rami senza modifica e controllano che
+     * il valore {@code false} sia coerente con dimensione e uguaglianza finali.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Esegue entrambe le operazioni e confronta dimensione e contenuto finali.</p>
+     * <p>Il test tenta prima {@code removeAll()} con {@code a=different} e
+     * {@code missing=value} e verifica dimensione due; costruisce poi una
+     * copia completa della fixture, esegue {@code retainAll()} e confronta la
+     * mappa finale con tale copia.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La fixture contiene due mapping.</p>
      * <p><b>Post-Condition:</b></p>
@@ -612,7 +786,10 @@ public class ViewsTest {
      * <p>Argomento e destinatario sono lo stesso oggetto; il caso controlla
      * che l'iterazione con rimozione non salti elementi e gestisca anche lo stato vuoto.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Rimuove la vista da se stessa e ripete l'operazione dopo lo svuotamento.</p>
+     * <p>Il test salva {@code map.keySet()} in {@code view}, passa lo stesso
+     * riferimento a {@code view.removeAll(view)}, controlla risultato vero,
+     * stato vuoto di mappa e vista e dimensione zero, quindi ripete la
+     * chiamata sullo stato vuoto e ne verifica il risultato falso.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene le due chiavi della fixture.</p>
      * <p><b>Post-Condition:</b></p>
@@ -637,7 +814,9 @@ public class ViewsTest {
      * <p>Il valore {@code 1} compare due volte: serve a controllare che ogni
      * mapping attraversato venga rimosso anche quando gli elementi non sono unici.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Passa {@code values()} come argomento della propria {@code removeAll()}.</p>
+     * <p>Il test aggiunge {@code c=1}, salva la vista dei tre valori e la
+     * passa come argomento della propria {@code removeAll()}; verifica poi
+     * risultato vero, stato vuoto di mappa e vista e dimensione zero.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Tre mapping sono presenti e due condividono lo stesso valore.</p>
      * <p><b>Post-Condition:</b></p>
@@ -659,10 +838,14 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica {@code entrySet().removeAll(entrySet())} sulla stessa vista.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>L'auto-rimozione esercita contemporaneamente confronto delle entry e
-     * rimozione tramite l'iteratore della vista backed.</p>
+     * <p>Destinazione e collezione argomento sono lo stesso oggetto. Questa
+     * condizione di aliasing obbliga l'operazione a eliminare entrambe le
+     * entry senza saltarne una e verifica l'effetto finale senza imporre una
+     * particolare strategia interna o un ordine di attraversamento.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Passa la vista delle entry come argomento di se stessa.</p>
+     * <p>Il test salva {@code map.entrySet()} in {@code view}, esegue
+     * {@code view.removeAll(view)} e controlla risultato vero, stato vuoto
+     * della mappa e della vista e dimensione finale zero.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene i due mapping della fixture.</p>
      * <p><b>Post-Condition:</b></p>
@@ -686,7 +869,9 @@ public class ViewsTest {
      * <p>Poiché ogni chiave appartiene necessariamente alla collezione usata
      * per la selezione, nessuna rimozione deve avvenire.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Conserva nella vista tutti gli elementi della vista stessa e ricontrolla i mapping.</p>
+     * <p>Il test passa {@code view} alla propria {@code retainAll()}, verifica
+     * il risultato falso e controlla poi dimensione, valori associati ad
+     * {@code a} e {@code b} e appartenenza di entrambe le chiavi alla vista.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene {@code a} e {@code b}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -712,7 +897,10 @@ public class ViewsTest {
      * <p>La presenza di due {@code 1} conferma che il metodo conserva ogni
      * mapping, senza ridurre la vista a un insieme di valori distinti.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Passa la stessa vista come selezione e conta poi le occorrenze nell'array.</p>
+     * <p>Il test aggiunge {@code c=1}, passa la vista dei valori a se stessa
+     * in {@code retainAll()}, controlla risultato falso, dimensione e tre
+     * mapping, quindi converte la vista in array e verifica che {@code 1}
+     * compaia ancora due volte.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene {@code a=1}, {@code b=2} e {@code c=1}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -739,7 +927,10 @@ public class ViewsTest {
      * <p>Contenuto della vista e mapping della mappa vengono controllati
      * entrambi per escludere modifiche non segnalate dal valore di ritorno.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Conserva tutte le entry già appartenenti alla stessa vista.</p>
+     * <p>Il test esegue {@code view.retainAll(view)}, verifica il risultato
+     * falso, controlla dimensione due e appartenenza delle entry
+     * {@code a=1} e {@code b=2}, quindi ricontrolla i due valori direttamente
+     * nella mappa.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Sono presenti {@code a=1} e {@code b=2}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -766,7 +957,10 @@ public class ViewsTest {
      * contenuto coincide, ma il contratto generale di {@link HCollection} non
      * richiede un confronto strutturale.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Confronta le viste nei due versi e controlla la riflessività.</p>
+     * <p>Il test costruisce una seconda mappa con chiavi diverse ma valori
+     * {@code 1} e {@code 2}; confronta le due viste dei valori in entrambe le
+     * direzioni e, come controllo di base, confronta la vista della fixture
+     * con se stessa.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Le due viste contengono {@code 1} e {@code 2}, ma sono istanze diverse.</p>
      * <p><b>Post-Condition:</b></p>
@@ -791,7 +985,10 @@ public class ViewsTest {
      * <p>La stessa collezione di selezione viene prima usata come sottoinsieme
      * valido e poi estesa, rendendo chiaro quale elemento cambia il risultato.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Cerca prima {@code a}, quindi {@code a} e {@code missing}, nella vista delle chiavi.</p>
+     * <p>Il test costruisce una seconda {@code keySet()} contenente soltanto
+     * {@code a} e verifica {@code containsAll()}; aggiunge poi
+     * {@code missing} alla stessa sorgente e ripete la ricerca, isolando
+     * l'unico elemento che deve rendere falso il risultato.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La fixture contiene soltanto le chiavi {@code a} e {@code b}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -812,11 +1009,15 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica gli argomenti {@code null} delle operazioni bulk di {@code keySet()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Un helper comune applica lo stesso controllo alle quattro operazioni,
-     * evitando differenze accidentali tra test equivalenti.</p>
+     * <p>Un helper comune applica alla sola vista delle chiavi le quattro
+     * chiamate con argomento nullo. Dopo ogni eccezione ricontrolla l'intera
+     * fixture, invece di controllarla soltanto alla fine, così individua
+     * l'eventuale operazione responsabile di una modifica parziale.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Invoca {@code containsAll}, {@code addAll}, {@code removeAll} e
-     * {@code retainAll} con una collezione nulla.</p>
+     * <p>Il test passa {@code keySet()} all'helper, che invoca nell'ordine
+     * {@code containsAll(null)}, {@code addAll(null)},
+     * {@code removeAll(null)} e {@code retainAll(null)}; per ogni chiamata
+     * richiede {@link NullPointerException} e verifica subito la fixture.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista delle chiavi contiene i due elementi della fixture.</p>
      * <p><b>Post-Condition:</b></p>
@@ -833,10 +1034,14 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica gli argomenti {@code null} delle operazioni bulk di {@code values()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Riutilizza lo stesso controllo della vista delle chiavi per dimostrare
-     * che il contratto comune è applicato anche alla collection dei valori.</p>
+     * <p>Si riutilizza la stessa procedura della vista delle chiavi, ma le si
+     * fornisce esplicitamente {@code values()}: la scelta evita duplicazioni
+     * nel codice di test senza confondere il risultato relativo alla
+     * collection dei valori con quello delle altre viste.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Esegue le quattro operazioni bulk con argomento nullo.</p>
+     * <p>Il test passa {@code values()} all'helper; l'helper esegue in
+     * sequenza le quattro operazioni bulk con {@code null}, intercetta per
+     * ciascuna {@link NullPointerException} e ricontrolla i mapping iniziali.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene {@code 1} e {@code 2}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -853,9 +1058,15 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica gli argomenti {@code null} delle operazioni bulk di {@code entrySet()}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Il caso completa il confronto tra le tre viste usando una procedura comune.</p>
+     * <p>Il caso completa la stessa partizione sulle tre viste fornendo
+     * {@code entrySet()} all'helper comune. La verifica dello stato dopo ogni
+     * eccezione è particolarmente rilevante per {@code removeAll()} e
+     * {@code retainAll()}, che altrimenti potrebbero lasciare rimozioni parziali.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Passa {@code null} alle quattro operazioni bulk della vista delle entry.</p>
+     * <p>Il test delega la vista delle entry all'helper, che tenta
+     * {@code containsAll}, {@code addAll}, {@code removeAll} e
+     * {@code retainAll} con argomento {@code null}, verificando eccezione e
+     * fixture dopo ogni tentativo.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene le due entry della fixture.</p>
      * <p><b>Post-Condition:</b></p>
@@ -873,9 +1084,14 @@ public class ViewsTest {
      * <p>Verifica la ricerca di {@code null} nella vista dei valori.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Il test parte da una mappa popolata e usa il controllo completo della
-     * fixture per assicurare che l'eccezione non causi effetti collaterali.</p>
+     * fixture per assicurare che l'eccezione non causi effetti collaterali.
+     * Il caso resta distinto da {@code values().remove(null)}, perché le due
+     * operazioni hanno risultati contrattuali diversi.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Invoca {@code values().contains(null)} e intercetta l'errore.</p>
+     * <p>Il test invoca {@code values().contains(null)}, fallisce se la
+     * chiamata termina normalmente e, dopo aver intercettato
+     * {@link NullPointerException}, usa {@link #assertFixtureUnchanged()} per
+     * verificare dimensione, mapping, chiavi e valori.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La {@code Hashtable} sottostante contiene soltanto valori non nulli.</p>
      * <p><b>Post-Condition:</b></p>
@@ -901,7 +1117,9 @@ public class ViewsTest {
      * l'implementazione di {@code remove()} attraversa la vista e tratta
      * esplicitamente l'argomento nullo.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Tenta di rimuovere {@code null} e ricontrolla l'intera fixture.</p>
+     * <p>Il test invoca {@code values().remove(null)}, richiede direttamente
+     * il risultato {@code false} e poi controlla con l'helper condiviso
+     * dimensione, valori associati, chiavi e valori della fixture.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Nessun valore nullo può essere contenuto nella mappa.</p>
      * <p><b>Post-Condition:</b></p>
@@ -920,9 +1138,14 @@ public class ViewsTest {
      * <p>Verifica gli argomenti che non possono rappresentare una entry.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Sono usati sia {@code null} sia una {@link String}, controllando
-     * {@code contains()} e {@code remove()} per ogni tipo non valido.</p>
+     * {@code contains()} e {@code remove()} per ogni tipo non valido.
+     * {@code null} copre l'assenza di oggetto, mentre la stringa
+     * {@code "not an entry"} è un oggetto valido ma del tipo sbagliato; il
+     * controllo finale congiunto esclude rimozioni accidentali.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Interroga e modifica apparentemente {@code entrySet()} con i quattro casi.</p>
+     * <p>Il test esegue prima {@code contains(null)} e {@code remove(null)},
+     * poi ripete entrambe le operazioni con la stringa non-entry; richiede
+     * quattro risultati falsi e infine ricontrolla tutta la fixture.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene due oggetti {@link HMap.Entry} validi.</p>
      * <p><b>Post-Condition:</b></p>
@@ -944,9 +1167,15 @@ public class ViewsTest {
      * <p>Verifica operazioni bulk senza modifiche su {@code keySet()}.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>{@code removeAll()} riceve solo una chiave assente, mentre
-     * {@code retainAll()} riceve tutte le chiavi presenti.</p>
+     * {@code retainAll()} riceve tutte le chiavi presenti. Sono così
+     * esercitati i due modi in cui un'operazione bulk può non cambiare la
+     * vista; dopo ciascun metodo, e non soltanto alla fine, viene controllata
+     * la fixture completa.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Esegue le due operazioni e controlla la fixture dopo ciascuna chiamata.</p>
+     * <p>Il test costruisce prima una sorgente con {@code missing}, esegue
+     * {@code keySet().removeAll()} e verifica risultato falso e fixture;
+     * costruisce poi una sorgente con {@code a} e {@code b}, esegue
+     * {@code retainAll()} e ripete gli stessi controlli.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene {@code a} e {@code b}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -973,9 +1202,15 @@ public class ViewsTest {
      * <p>Verifica operazioni bulk senza modifiche su {@code values()}.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>{@code removeAll()} usa un valore assente e {@code retainAll()} una
-     * collezione che comprende tutti i valori presenti.</p>
+     * collezione che comprende tutti i valori presenti. Le sorgenti sono
+     * ottenute da altre mappe per fornire vere {@link HCollection}, mentre il
+     * controllo della fixture dopo ogni chiamata collega il valore
+     * {@code false} all'assenza effettiva di modifiche.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Esegue le due operazioni e confronta lo stato dopo ogni passaggio.</p>
+     * <p>Il test tenta {@code removeAll()} con una vista contenente
+     * {@code missing} e controlla risultato e fixture; prepara poi una vista
+     * contenente {@code 1} e {@code 2}, tenta {@code retainAll()} e ripete il
+     * controllo completo dello stato.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene i valori {@code 1} e {@code 2}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1003,9 +1238,16 @@ public class ViewsTest {
      * <p><b>Test Case Design:</b></p>
      * <p>Un secondo insieme contiene le stesse chiavi ma valori diversi,
      * mostrando che l'uguaglianza dipende soltanto dagli elementi del set e
-     * non dall'ordine o dai valori associati nella mappa.</p>
+     * non dai valori associati nella mappa. I controlli con {@code null}, una
+     * stringa, la stessa istanza, un altro tipo di vista e una dimensione
+     * maggiore coprono separatamente i principali confini del contratto;
+     * simmetria e hash code sono verificati insieme all'uguaglianza positiva.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Controlla tipo, riflessività, simmetria, hash e differenze di tipo o dimensione.</p>
+     * <p>Il test crea un secondo {@code keySet()} con chiavi {@code a} e
+     * {@code b}, verifica i confronti con {@code null}, tipo errato e se
+     * stesso, quindi uguaglianza nei due versi e hash code. Confronta poi il
+     * set con un {@code entrySet()} e aggiunge {@code c} al set equivalente
+     * per verificare il caso di dimensione diversa.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>I due {@code keySet()} equivalenti contengono {@code a} e {@code b}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1042,9 +1284,15 @@ public class ViewsTest {
      * <p>Verifica i casi limite dell'uguaglianza di {@code entrySet()}.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>La mappa equivalente viene popolata in ordine diverso, perché
-     * l'uguaglianza di un insieme non deve dipendere dall'ordine della {@code Hashtable}.</p>
+     * l'uguaglianza di un insieme non deve dipendere dall'ordine della
+     * {@code Hashtable}. I casi {@code null}, tipo diverso, identità,
+     * simmetria e dimensione diversa delimitano il contratto, mentre il
+     * confronto degli hash verifica la coerenza richiesta agli insiemi uguali.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Controlla {@code null}, tipo errato, riflessività, simmetria, hash e dimensione differente.</p>
+     * <p>Il test costruisce una seconda mappa con gli stessi mapping inseriti
+     * in ordine inverso; confronta {@code entrySet()} con {@code null}, una
+     * stringa e se stesso, verifica uguaglianza nei due versi e hash uguali,
+     * quindi aggiunge {@code c=3} e richiede che l'uguaglianza diventi falsa.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Le due viste contengono inizialmente gli stessi mapping.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1076,9 +1324,14 @@ public class ViewsTest {
      * <p>Verifica che {@code add()} non sia supportato da nessuna vista della mappa.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Vengono forniti una chiave, un valore e una entry formalmente validi:
-     * l'errore dipende dall'operazione, non dal tipo dell'elemento.</p>
+     * l'errore dipende dall'operazione, non dal tipo dell'elemento. L'helper
+     * verifica per ogni vista sia l'eccezione locale prevista sia l'assenza
+     * dell'elemento proposto; la dimensione finale collega i tre controlli
+     * allo stato complessivo della mappa.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Tenta l'aggiunta su tutte le viste tramite un helper comune.</p>
+     * <p>Il test tenta tramite l'helper di aggiungere {@code c} alle chiavi,
+     * {@code 3} ai valori e {@code c=3} alle entry. Dopo le tre eccezioni e i
+     * controlli di assenza, verifica che la mappa contenga ancora due mapping.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene due mapping e gli elementi proposti sono nuovi.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1099,9 +1352,13 @@ public class ViewsTest {
      * <p>Verifica {@code addAll()} con una collezione vuota.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Una sorgente vuota non provoca alcuna chiamata ad {@code add()} e
-     * permette quindi di distinguere l'assenza di modifiche da un'aggiunta non supportata.</p>
+     * permette quindi di distinguere l'assenza di modifiche da un'aggiunta
+     * non supportata. Lo stesso oggetto sorgente viene usato sulle tre viste,
+     * così l'unica variabile del confronto è il tipo di vista destinataria.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Passa lo stesso {@code keySet()} vuoto alle tre viste della fixture.</p>
+     * <p>Il test ottiene il {@code keySet()} di una mappa vuota, lo passa a
+     * {@code addAll()} di chiavi, valori ed entry e richiede tre risultati
+     * falsi; infine verifica che la dimensione della fixture resti due.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La sorgente non contiene elementi; la destinazione contiene due mapping.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1123,9 +1380,14 @@ public class ViewsTest {
      * <p>Verifica {@code addAll()} non vuoto su tutte le viste.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Ogni sorgente contiene un elemento adatto alla propria vista, così
-     * l'eccezione documenta il carattere opzionale dell'aggiunta.</p>
+     * l'eccezione dipende dal carattere non supportato dell'aggiunta e non da
+     * una sorgente vuota o da un tipo palesemente scorretto. L'unica mappa
+     * sorgente {@code c=3} produce coerentemente chiave, valore ed entry per i
+     * tre tentativi.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Tenta di aggiungere chiavi, valori ed entry provenienti da una seconda mappa.</p>
+     * <p>Il test crea la sorgente {@code c=3}; passa rispettivamente il suo
+     * {@code keySet()}, {@code values()} ed {@code entrySet()} agli helper che
+     * richiedono l'eccezione; dopo i tre tentativi verifica dimensione due.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La sorgente contiene {@code c=3}; la fixture non contiene quel mapping.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1148,9 +1410,14 @@ public class ViewsTest {
      * <p>Verifica {@code toArray()} senza array di destinazione sulla vista delle chiavi.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Il contenuto viene controllato per appartenenza e non per posizione,
-     * perché la {@code Hashtable} non garantisce un ordine stabile.</p>
+     * perché la {@code Hashtable} non garantisce un ordine stabile. La
+     * sostituzione di una cella con {@code "changed"}, seguita dal controllo
+     * delle due chiavi nella mappa, verifica l'indipendenza del contenitore
+     * array senza assumere quale chiave occupi l'indice zero.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Converte la vista, controlla dimensione e chiavi, quindi modifica una cella.</p>
+     * <p>Il test converte {@code keySet()} in un nuovo array, verifica
+     * lunghezza due e appartenenza di {@code a} e {@code b}, sostituisce la
+     * prima cella e controlla infine che entrambe le chiavi restino nella mappa.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>{@code keySet()} contiene {@code a} e {@code b}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1174,9 +1441,15 @@ public class ViewsTest {
      * <p>Verifica duplicati e indipendenza del contenitore prodotto da {@code values().toArray()}.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Due mapping hanno valore {@code 1}; il conteggio delle occorrenze
-     * evita di trattare per errore la vista dei valori come un insieme.</p>
+     * evita di trattare per errore la vista dei valori come un insieme. La
+     * verifica separata dell'unica occorrenza di {@code 2} completa il
+     * contenuto atteso; la modifica di una cella prova soltanto l'indipendenza
+     * dell'array come contenitore, non degli oggetti eventualmente contenuti.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Converte tre valori, conta le occorrenze e sostituisce una cella dell'array.</p>
+     * <p>Il test aggiunge {@code c=1}, converte {@code values()} in array,
+     * verifica lunghezza tre, due occorrenze di {@code 1} e una di {@code 2},
+     * modifica la prima cella e ricontrolla dimensione e presenza dei due
+     * valori nella mappa.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La mappa contiene i valori {@code 1}, {@code 2}, {@code 1}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1202,13 +1475,20 @@ public class ViewsTest {
      * <p>Verifica che {@code entrySet().toArray()} produca entry valide per i mapping.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Ogni elemento viene controllato per tipo, chiave presente e valore
-     * corrente, senza imporre l'ordine di attraversamento.</p>
+     * corrente, senza imporre l'ordine di attraversamento. La lunghezza viene
+     * confrontata con la dimensione della mappa per richiedere un elemento
+     * per mapping; il metodo non modifica entry né mappa e quindi non pretende
+     * di verificare il backing dei singoli oggetti restituiti.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Converte la vista e confronta ciascuna entry con la mappa backing.</p>
+     * <p>Il test converte {@code entrySet()} in array, confronta la lunghezza
+     * con {@code map.size()} e, per ogni cella, verifica il tipo
+     * {@link HMap.Entry}, la presenza della chiave nella mappa e l'uguaglianza
+     * tra valore della mappa e valore esposto dalla entry.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La fixture contiene due mapping.</p>
      * <p><b>Post-Condition:</b></p>
-     * <p>La mappa non viene modificata; le entry restano oggetti backed.</p>
+     * <p>La mappa conserva i due mapping iniziali; l'array contiene soltanto
+     * oggetti che descrivono coppie chiave-valore correnti.</p>
      * <p><b>Expected Results:</b></p>
      * <p>L'array ha dimensione due e ogni elemento descrive un mapping corrente.</p>
      */
@@ -1230,9 +1510,15 @@ public class ViewsTest {
      * <p>Verifica il riuso di un array più grande da parte di {@code values().toArray(Object[])}.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Quattro sentinelle rendono osservabili sia la cella terminatrice da
-     * impostare a {@code null} sia la parte di coda che non deve essere modificata.</p>
+     * impostare a {@code null} sia la parte di coda che non deve essere
+     * modificata. Con due valori e quattro celle, l'indice 2 è il primo
+     * spazio libero e l'indice 3 rappresenta la coda; il controllo dei valori
+     * resta indipendente dall'ordine di iterazione.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Fornisce un array di lunghezza quattro a una vista con due valori.</p>
+     * <p>Il test inizializza quattro celle con lo stesso riferimento
+     * sentinella, passa l'array a {@code values().toArray()}, verifica che il
+     * riferimento restituito sia lo stesso, controlla {@code null} all'indice
+     * 2, sentinella all'indice 3 e presenza di {@code 1} e {@code 2}.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>L'array è sufficientemente grande e contiene la stessa sentinella in ogni cella.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1259,9 +1545,13 @@ public class ViewsTest {
      * <p>Verifica l'allocazione quando un {@code Object[]} è troppo piccolo.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Un array vuoto rende inequivocabile la necessità di crearne uno nuovo
-     * della dimensione richiesta.</p>
+     * della dimensione richiesta. La non identità dei riferimenti prova la
+     * nuova allocazione, mentre lunghezza e appartenenza delle chiavi
+     * verificano che il nuovo contenitore abbia capacità e contenuto corretti.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Passa un {@code Object[0]} a una vista contenente due chiavi.</p>
+     * <p>Il test passa un {@code Object[0]} a {@code keySet().toArray()},
+     * confronta i riferimenti per richiedere un array diverso, verifica
+     * lunghezza due e cerca {@code a} e {@code b} senza assumerne la posizione.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>L'array non ha spazio per alcun elemento.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1284,9 +1574,13 @@ public class ViewsTest {
      * <p>Verifica il riuso di un {@code Object[]} con dimensione esatta.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>La capacità coincide con la dimensione della vista, quindi non serve
-     * né una nuova allocazione né una cella terminatrice.</p>
+     * né una nuova allocazione né una cella terminatrice. Il controllo di
+     * identità distingue il riuso da una copia della stessa lunghezza e le
+     * ricerche per appartenenza evitano dipendenze dall'ordine.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Converte le due chiavi nell'array fornito dal chiamante.</p>
+     * <p>Il test crea un {@code Object[2]}, lo passa a
+     * {@code keySet().toArray()}, verifica che il riferimento restituito sia
+     * identico a quello fornito e cerca entrambe le chiavi nelle due celle.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>L'array ha due celle e la vista contiene due elementi.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1308,9 +1602,13 @@ public class ViewsTest {
      * <p>Verifica quale parte di un array sovradimensionato viene azzerata.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Le sentinelle permettono di distinguere la cella subito successiva
-     * agli elementi dalla coda ulteriore, che il contratto lascia invariata.</p>
+     * agli elementi dalla coda ulteriore, che il contratto lascia invariata.
+     * Un array di quattro celle per due chiavi lascia esattamente un indice
+     * terminatore e almeno un indice di coda osservabile.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Converte due chiavi in un array di quattro celle precompilate.</p>
+     * <p>Il test riempie quattro celle con la stessa sentinella, converte le
+     * due chiavi nell'array, verifica il riuso del riferimento e controlla che
+     * l'indice 2 sia {@code null} mentre l'indice 3 conservi la sentinella.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Tutte le celle contengono la stessa sentinella non nulla.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1333,9 +1631,13 @@ public class ViewsTest {
      * <p>Verifica il riuso di un array tipizzato compatibile.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Le chiavi sono {@link String} e l'array {@code String[]} ha una cella
-     * in più, coprendo insieme compatibilità runtime e terminatore nullo.</p>
+     * in più, coprendo insieme compatibilità runtime, riuso e terminatore
+     * nullo. La ricerca delle due chiavi non assume in quale ordine vengano
+     * scritte dalla vista.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Copia le chiavi in un {@code String[3]}.</p>
+     * <p>Il test passa un {@code String[3]} a {@code keySet().toArray()},
+     * verifica l'identità del riferimento restituito, cerca {@code a} e
+     * {@code b} e controlla che la terza cella sia il terminatore {@code null}.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>Tutti gli elementi della vista sono assegnabili a {@link String}.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1358,9 +1660,13 @@ public class ViewsTest {
      * <p>Verifica il rifiuto di un array con tipo runtime incompatibile.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Un {@code Integer[2]} ha capacità sufficiente, ma non può contenere
-     * le chiavi {@link String}; l'errore avviene quindi durante la memorizzazione.</p>
+     * le chiavi {@link String}. La dimensione esatta esclude il ramo di
+     * riallocazione e isola il controllo del tipo runtime durante la
+     * memorizzazione; l'annotazione JUnit richiede il tipo preciso di eccezione.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Passa l'array incompatibile a {@code keySet().toArray()}.</p>
+     * <p>Il test crea implicitamente un {@code Integer[2]} e lo passa a
+     * {@code keySet().toArray()}; JUnit considera riuscito il metodo soltanto
+     * se la copia delle chiavi termina con {@link ArrayStoreException}.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista contiene due stringhe e l'array contiene due celle per interi.</p>
      * <p><b>Post-Condition:</b></p>
@@ -1377,9 +1683,14 @@ public class ViewsTest {
      * <p><b>Summary:</b></p>
      * <p>Verifica il rifiuto di un array di destinazione {@code null}.</p>
      * <p><b>Test Case Design:</b></p>
-     * <p>Il caso isola la validazione dell'argomento senza coinvolgere tipo o dimensione.</p>
+     * <p>Il caso passa il riferimento {@code null} direttamente, isolando la
+     * validazione dell'argomento dai rami relativi a tipo, capacità e riuso.
+     * La vista non vuota impedisce che un'implementazione accetti il dato
+     * soltanto perché non deve copiare elementi.</p>
      * <p><b>Test Description:</b></p>
-     * <p>Invoca {@code keySet().toArray(null)}.</p>
+     * <p>Il test invoca {@code keySet().toArray(null)} sulla fixture popolata;
+     * l'annotazione JUnit considera riuscito il metodo esclusivamente quando
+     * viene propagata {@link NullPointerException}.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La vista è valida e non vuota; manca soltanto l'array di destinazione.</p>
      * <p><b>Post-Condition:</b></p>

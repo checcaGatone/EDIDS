@@ -21,21 +21,33 @@ import static org.junit.Assert.fail;
  * di attraversamento normale, iteratore vuoto, esaurimento e rimozione. I test
  * controllano gli iteratori di {@code keySet()}, {@code values()} ed
  * {@code entrySet()}, compresa la conservazione dei valori duplicati e
- * l'effetto di {@link HIterator#remove()} sulla mappa sostenuta dalle viste.
+ * l'effetto di {@link HIterator#remove()} sulla mappa sottostante alle viste.
  * Vengono inoltre verificate {@link NoSuchElementException} e l'eccezione
  * locale {@link MapAdapter.HIllegalStateException} prevista dal progetto per
- * gli stati in cui {@code remove()} non è consentito.</p>
+ * gli stati in cui {@code remove()} non è consentito. I sedici test sono
+ * suddivisi concettualmente in quattro categorie descritte in forma discorsiva:
+ * attraversamento delle tre viste e gestione dei duplicati, limiti di
+ * {@code next()} e natura non distruttiva di {@code hasNext()}, stati legali e
+ * illegali di {@code remove()}, continuità e indipendenza degli iteratori
+ * realizzati da {@code MapAdapter}.</p>
  *
  * <p><b>Test Case Design:</b>
  * La fixture contiene tre mapping con chiavi e valori distinti, così è
  * possibile controllare quantità, appartenenza e modifiche della mappa senza
  * dipendere dall'ordine non specificato della {@code Hashtable}. Mappe locali
  * vengono usate per isolare i casi vuoti e quello con valori duplicati. I test
- * che rimuovono durante l'attraversamento esercitano la scelta concreta di
- * {@code MapAdapter}: ogni iteratore conserva uno snapshot delle sole chiavi e
- * usa la mappa originale per applicare {@code remove()}. Non vengono invece
- * effettuate modifiche strutturali esterne durante l'iterazione e non viene
- * richiesto un comportamento fail-fast.</p>
+ * verificano congiuntamente ciò che l'iteratore restituisce e lo stato della
+ * mappa dopo le rimozioni, perché il solo conteggio non individuerebbe un
+ * mapping eliminato in modo errato. Nei casi di attraversamento non viene mai
+ * imposto un ordine, dato che la {@code Hashtable} non ne garantisce uno. Le
+ * prove che rimuovono e poi proseguono esercitano una scelta concreta di
+ * {@code MapAdapter}: al momento della costruzione ogni iteratore memorizza uno
+ * snapshot delle sole chiavi, usa un proprio cursore e consulta la mappa
+ * originale per produrre valori o entry e per applicare {@code remove()}.
+ * Questa strategia viene documentata separatamente dal contratto generale di
+ * {@link HIterator}. Non sono introdotte modifiche strutturali esterne durante
+ * l'iterazione e non viene quindi affermato né richiesto un comportamento
+ * fail-fast.</p>
  *
  * @author Filippo Barban
  * @version 1.1.0
@@ -195,18 +207,24 @@ public class IteratorTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica che l'iteratore di {@code entrySet()} rappresenti tutti i
-     * mapping della fixture.</p>
+     * Verifica che l'iteratore di {@code entrySet()} produca tre entry, ciascuna
+     * coerente con un mapping corrente della fixture.</p>
      *
      * <p><b>Test Case Design:</b>
-     * Ogni oggetto restituito viene interpretato come {@link HMap.Entry} e
-     * confrontato con la mappa tramite chiave e valore. Il conteggio finale
-     * controlla la completezza senza dipendere dall'ordine.</p>
+     * Ogni oggetto restituito viene interpretato come {@link HMap.Entry}; il
+     * cast rende osservabile anche un eventuale tipo errato. Presenza della
+     * chiave e uguaglianza del valore controllano la validità di ciascun
+     * risultato, mentre il conteggio finale verifica che siano prodotte tre
+     * entry senza imporre un ordine. Non si attribuisce a questo metodo una
+     * verifica esplicita dell'unicità, perché il codice non mantiene un insieme
+     * separato delle chiavi già visitate.</p>
      *
      * <p><b>Test Description:</b>
-     * Attraversa l'insieme delle entry, verifica che ogni chiave sia presente e
-     * che {@code getValue()} coincida con il valore corrente letto dalla mappa,
-     * quindi conta le entry prodotte.</p>
+     * Crea l'iteratore di {@code entrySet()} e inizializza il contatore a zero.
+     * A ogni passo converte il risultato in {@link HMap.Entry}, verifica che la
+     * chiave appartenga alla mappa, confronta il valore dell'entry con
+     * {@code map.get(entry.getKey())} e incrementa il contatore. Al termine
+     * confronta il conteggio con {@code map.size()}.</p>
      *
      * <p><b>Pre-Condition:</b>
      * La fixture contiene tre mapping e non viene modificata durante
@@ -217,8 +235,9 @@ public class IteratorTest {
      * le entry.</p>
      *
      * <p><b>Expected Results:</b>
-     * Ogni entry descrive un mapping effettivo e il numero delle entry
-     * restituite coincide con {@code map.size()}.</p>
+     * Ciascuna entry prodotta possiede una chiave presente e il valore associato
+     * corrente; il numero complessivo dei risultati è pari a tre, cioè a
+     * {@code map.size()}.</p>
      */
     @Test
     public void entryIteratorVisitsEveryMapping() {
@@ -565,8 +584,11 @@ public class IteratorTest {
      * La mappa e la sua vista delle entry sono vuote.</p>
      *
      * <p><b>Expected Results:</b>
-     * Vengono completate tre rimozioni e l'iteratore termina normalmente senza
-     * richiedere un comportamento fail-fast.</p>
+     * Il contatore vale tre, {@code map.isEmpty()} restituisce {@code true} e
+     * anche {@code map.entrySet().isEmpty()} restituisce {@code true}. Il
+     * risultato documenta che l'iteratore snapshot di {@code MapAdapter}
+     * supporta le proprie rimozioni durante l'attraversamento; non formula
+     * alcuna aspettativa sulle modifiche strutturali eseguite dall'esterno.</p>
      */
     @Test
     public void iteratorCanRemoveEveryMapping() {
