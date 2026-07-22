@@ -5,7 +5,39 @@ import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 
+/**
+ * Punto di ingresso da riga di comando per l'intera suite JUnit del progetto.
+ *
+ * <p>
+ * Il runner esegue insieme i test della mappa, delle viste, degli iteratori e
+ * delle entry. Al termine stampa un riepilogo leggibile con test eseguiti,
+ * superati, falliti e ignorati; per ogni fallimento mostra anche lo stack
+ * trace, così è possibile individuare il test responsabile senza usare un IDE.
+ * </p>
+ *
+ * <p>
+ * Le classi sono elencate esplicitamente per rendere evidente la composizione
+ * della suite richiesta dalla consegna. Il tempo viene misurato attorno alla
+ * sola esecuzione di JUnit, mentre il numero dei test superati esclude sia i
+ * fallimenti sia gli assumption failure. Un risultato non riuscito termina il
+ * processo con codice {@code 1}, scelta utile negli script di validazione.
+ * </p>
+ *
+ * @author Filippo Barban
+ * @version 1.1.0
+ * @see MapAdapterTest
+ * @see ViewsTest
+ * @see IteratorTest
+ * @see EntryTest
+ */
 public class TestRunner {
+    /**
+     * Esegue le quattro classi di test e stampa il resoconto complessivo.
+     * Gli argomenti della riga di comando non sono utilizzati, perché la suite
+     * è definita direttamente tramite {@link JUnitCore#runClasses(Class...)}.
+     *
+     * @param args argomenti della riga di comando, ignorati dal runner
+     */
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
         Result result = JUnitCore.runClasses(
