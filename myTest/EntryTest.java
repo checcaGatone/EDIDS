@@ -30,7 +30,10 @@ import static org.junit.Assert.fail;
  * dall'iteratore e permette di non fare assunzioni sull'ordine della
  * {@code Hashtable}. I valori sono stringhe semplici, così uguaglianza e hash
  * sono deterministici. Quando serve un confronto tra oggetti distinti viene
- * usata {@link EntryStub}, un'implementazione indipendente di {@code HMap.Entry}.
+ * usata {@link EntryComp}, un'implementazione indipendente di {@code HMap.Entry}.
+ * Il suffisso {@code Comp}, abbreviazione di {@code comparison}, ne evidenzia
+ * il ruolo di entry di confronto. Essa permette di
+ * rappresentare una coppia attesa senza ottenere una seconda entry dalla mappa.
  * Le asserzioni controllano sia lo stato dell'entry sia, nei test dedicati al
  * collegamento con la mappa, gli effetti osservabili tramite {@code get()},
  * {@code values()} ed {@code entrySet()}. Questa combinazione è stata scelta
@@ -143,7 +146,7 @@ public class EntryTest {
      * viene osservato tramite {@code map.get()}, {@code values()} ed
      * {@code entrySet()}. Il valore iniziale {@code "1"} è unico, quindi la sua
      * assenza da {@code values()} esclude che il nuovo valore sia stato soltanto
-     * affiancato. Lo {@link EntryStub} consente di cercare la coppia attesa
+     * affiancato. L'oggetto {@link EntryComp} consente di cercare la coppia attesa
      * senza ricavare dalla mappa una seconda entry dipendente dall'implementazione.</p>
      *
      * <p><b>Test Description:</b>
@@ -172,7 +175,7 @@ public class EntryTest {
         sameEntry.setValue("2");
         assertEquals("2", map.get("a"));
         assertTrue(map.values().contains("2"));
-        assertTrue(map.entrySet().contains(new EntryStub("a", "2")));
+        assertTrue(map.entrySet().contains(new EntryComp("a", "2")));
         assertFalse(map.values().contains("1"));
     }
 
@@ -222,7 +225,7 @@ public class EntryTest {
      * entry equivalenti ma implementate da classi diverse.</p>
      *
      * <p><b>Test Case Design:</b>
-     * Si costruisce un nuovo {@link EntryStub} con lo stesso mapping
+     * Si costruisce un nuovo {@link EntryComp} con lo stesso mapping
      * {@code a=1} invece di riutilizzare il riferimento della fixture. La
      * distinzione delle classi concrete è intenzionale: il contratto di entry
      * riguarda la coppia chiave-valore e non l'identità o l'implementazione
@@ -230,8 +233,9 @@ public class EntryTest {
      * della simmetria, mentre l'ultima asserzione collega uguaglianza e hash.</p>
      *
      * <p><b>Test Description:</b>
-     * Crea anzitutto {@code other} come stub di {@code a=1}. Verifica quindi
-     * {@code entry.equals(other)}, poi {@code other.equals(entry)} e infine
+     * Crea anzitutto {@code other} come entry di confronto per {@code a=1}.
+     * Verifica quindi {@code entry.equals(other)}, poi
+     * {@code other.equals(entry)} e infine
      * confronta i codici restituiti dai due {@code hashCode()}.</p>
      *
      * <p><b>Pre-Condition:</b>
@@ -247,7 +251,7 @@ public class EntryTest {
      */
     @Test
     public void equalEntriesRepresentSameMappingSymmetrically() {
-        HMap.Entry other = new EntryStub("a", "1");
+        HMap.Entry other = new EntryComp("a", "1");
         assertTrue(entry.equals(other));
         assertTrue(other.equals(entry));
         assertEquals(entry.hashCode(), other.hashCode());
@@ -288,17 +292,19 @@ public class EntryTest {
      * oggetti che non implementano {@link HMap.Entry}.</p>
      *
      * <p><b>Test Case Design:</b>
-     * I quattro dati separano altrettante cause di disuguaglianza: lo stub
-     * {@code b=1} cambia soltanto la chiave, lo stub {@code a=2} cambia soltanto
-     * il valore, {@code null} verifica il confine nullo e la stringa
+     * I quattro dati separano altrettante cause di disuguaglianza: l'entry di
+     * confronto {@code b=1} cambia soltanto la chiave, mentre l'entry
+     * {@code a=2} cambia soltanto il valore; {@code null} verifica il confine
+     * nullo e la stringa
      * {@code "a=1"} ha la stessa forma testuale ma un tipo non valido. Cambiare
      * una sola caratteristica alla volta consente di attribuire con precisione
      * un eventuale fallimento al controllo corrispondente.</p>
      *
      * <p><b>Test Description:</b>
-     * Confronta in sequenza l'entry {@code a=1} con uno stub {@code b=1}, con
-     * uno stub {@code a=2}, con {@code null} e con la stringa {@code "a=1"};
-     * ciascun risultato viene passato a {@code assertFalse}.</p>
+     * Confronta in sequenza l'entry {@code a=1} con le entry di confronto
+     * {@code b=1} e {@code a=2}, quindi con {@code null} e con la stringa
+     * {@code "a=1"}; ciascun risultato viene passato a
+     * {@code assertFalse}.</p>
      *
      * <p><b>Pre-Condition:</b>
      * L'entry della fixture rappresenta {@code a=1} e non è stata modificata.</p>
@@ -312,8 +318,8 @@ public class EntryTest {
      */
     @Test
     public void entryEqualityRejectsDifferentMappingsAndOtherObjects() {
-        assertFalse(entry.equals(new EntryStub("b", "1")));
-        assertFalse(entry.equals(new EntryStub("a", "2")));
+        assertFalse(entry.equals(new EntryComp("b", "1")));
+        assertFalse(entry.equals(new EntryComp("a", "2")));
         assertFalse(entry.equals(null));
         assertFalse(entry.equals("a=1"));
     }
@@ -325,15 +331,15 @@ public class EntryTest {
      * <p><b>Test Case Design:</b>
      * Le stringhe note {@code "a"} e {@code "1"} consentono di costruire
      * indipendentemente il risultato atteso mediante XOR. La prima asserzione
-     * verifica direttamente la formula; la seconda usa un {@link EntryStub}
+     * verifica direttamente la formula; la seconda usa un {@link EntryComp}
      * equivalente per controllare che due implementazioni dello stesso mapping
      * producano un hash coerente.</p>
      *
      * <p><b>Test Description:</b>
      * Calcola dapprima {@code "a".hashCode() ^ "1".hashCode()} e memorizza il
      * risultato. Lo confronta poi con {@code entry.hashCode()}; infine costruisce
-     * implicitamente uno stub {@code a=1} e confronta il suo hash con quello
-     * dell'entry della mappa.</p>
+     * implicitamente un'entry di confronto {@code a=1} e confronta il relativo
+     * hash con quello dell'entry della mappa.</p>
      *
      * <p><b>Pre-Condition:</b>
      * L'entry della fixture rappresenta il mapping non modificato {@code a=1}.</p>
@@ -343,13 +349,13 @@ public class EntryTest {
      *
      * <p><b>Expected Results:</b>
      * L'hash dell'entry coincide sia con lo XOR calcolato sia con l'hash dello
-     * stub equivalente.</p>
+     * oggetto di confronto equivalente.</p>
      */
     @Test
     public void hashCodeIsKeyHashXorValueHash() {
         int expected = "a".hashCode() ^ "1".hashCode();
         assertEquals(expected, entry.hashCode());
-        assertEquals(new EntryStub("a", "1").hashCode(), entry.hashCode());
+        assertEquals(new EntryComp("a", "1").hashCode(), entry.hashCode());
     }
 
     /**
@@ -359,32 +365,34 @@ public class EntryTest {
      *
      * <p><b>Test Case Design:</b>
      * Il valore {@code "updated"} è diverso da quello iniziale e viene usato sia
-     * per calcolare un nuovo XOR sia per costruire uno stub equivalente. Le tre
-     * asserzioni distinguono un hash rimasto legato al valore vecchio, un errore
+     * per calcolare un nuovo XOR sia per costruire un'entry di confronto
+     * equivalente. Le tre asserzioni distinguono un hash rimasto legato al
+     * valore vecchio, un errore
      * di uguaglianza e un'incoerenza tra entry uguali.</p>
      *
      * <p><b>Test Description:</b>
      * Come primo passo sostituisce {@code "1"} con {@code "updated"}. Calcola
-     * quindi lo XOR tra gli hash della chiave e del nuovo valore e crea uno stub
-     * {@code a=updated}. Infine confronta l'hash dell'entry con lo XOR, verifica
-     * l'uguaglianza con lo stub e confronta i due codici hash.</p>
+     * quindi lo XOR tra gli hash della chiave e del nuovo valore e crea un'entry
+     * di confronto {@code a=updated}. Infine confronta l'hash dell'entry con lo
+     * XOR, verifica
+     * l'uguaglianza con l'oggetto di confronto e confronta i due codici hash.</p>
      *
      * <p><b>Pre-Condition:</b>
      * La mappa contiene {@code a=1} e l'entry è collegata a tale mapping.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa e l'entry rappresentano {@code a=updated}; lo stub indipendente
-     * rappresenta la stessa coppia.</p>
+     * La mappa, l'entry e l'oggetto di confronto indipendente rappresentano la
+     * stessa coppia {@code a=updated}.</p>
      *
      * <p><b>Expected Results:</b>
-     * Il nuovo hash coincide con la formula attesa, l'entry è uguale allo stub
-     * e i rispettivi codici hash coincidono.</p>
+     * Il nuovo hash coincide con la formula attesa, l'entry è uguale all'oggetto
+     * di confronto e i rispettivi codici hash coincidono.</p>
      */
     @Test
     public void hashCodeTracksValueUpdatedThroughSetValue() {
         entry.setValue("updated");
         int expected = "a".hashCode() ^ "updated".hashCode();
-        HMap.Entry equivalent = new EntryStub("a", "updated");
+        HMap.Entry equivalent = new EntryComp("a", "updated");
         assertEquals(expected, entry.hashCode());
         assertTrue(entry.equals(equivalent));
         assertEquals(equivalent.hashCode(), entry.hashCode());
@@ -441,8 +449,9 @@ public class EntryTest {
      * <p><b>Test Description:</b>
      * Per prima cosa esegue {@code map.put("a", "updated")} senza richiedere
      * una nuova entry. Successivamente invoca {@code getValue()} sul riferimento
-     * preesistente e lo confronta con {@code "updated"}. Infine costruisce uno
-     * {@link EntryStub} {@code a=updated} e lo confronta con la stessa entry.</p>
+     * preesistente e lo confronta con {@code "updated"}. Infine costruisce
+     * un'entry {@link EntryComp} per {@code a=updated} e la confronta con la
+     * stessa entry.</p>
      *
      * <p><b>Pre-Condition:</b>
      * {@code entry} è stata ottenuta quando la mappa conteneva soltanto
@@ -453,42 +462,46 @@ public class EntryTest {
      * stesso creato nella fixture e osserva il valore corrente.</p>
      *
      * <p><b>Expected Results:</b>
-     * {@code getValue()} restituisce {@code "updated"} e lo stub indipendente
-     * {@code a=updated} risulta uguale all'entry conservata.</p>
+     * {@code getValue()} restituisce {@code "updated"} e l'entry di confronto
+     * indipendente {@code a=updated} risulta uguale all'entry conservata.</p>
      */
     @Test
     public void entryReadsCurrentValueAfterMapReplacement() {
         map.put("a", "updated");
         assertEquals("updated", entry.getValue());
-        assertEquals(new EntryStub("a", "updated"), entry);
+        assertEquals(new EntryComp("a", "updated"), entry);
     }
 
     /**
-     * Implementazione minima e indipendente di {@link HMap.Entry}, usata per
-     * costruire mapping attesi senza ottenere una seconda entry dalla mappa.
+     * Entry di confronto minima e indipendente che implementa
+     * {@link HMap.Entry}. Il suffisso {@code Comp}, abbreviazione di
+     * {@code comparison}, evidenzia che la classe serve a rappresentare una coppia
+     * chiave-valore attesa e a confrontarla con le entry prodotte dalla mappa.
      * La chiave resta fissa, mentre il valore può essere sostituito localmente;
-     * lo stub non è collegato a una {@link MapAdapter}.
+     * l'oggetto non è collegato a una {@link MapAdapter}. Questa indipendenza
+     * evita che il risultato atteso sia costruito mediante la stessa
+     * implementazione sottoposta al test.
      */
-    private static final class EntryStub implements HMap.Entry {
-        /** Chiave immutabile del mapping rappresentato dallo stub. */
+    private static final class EntryComp implements HMap.Entry {
+        /** Chiave immutabile del mapping rappresentato per il confronto. */
         private final Object key;
 
-        /** Valore corrente del mapping rappresentato dallo stub. */
+        /** Valore corrente del mapping rappresentato per il confronto. */
         private Object value;
 
         /**
-         * Crea una entry di supporto con la coppia indicata.
+         * Crea un'entry di confronto con la coppia indicata.
          *
          * @param entryKey chiave da memorizzare
          * @param entryValue valore iniziale da associare alla chiave
          */
-        private EntryStub(Object entryKey, Object entryValue) {
+        private EntryComp(Object entryKey, Object entryValue) {
             key = entryKey;
             value = entryValue;
         }
 
         /**
-         * Restituisce la chiave dello stub.
+         * Restituisce la chiave dell'entry di confronto.
          *
          * @return chiave immutabile del mapping
          */
@@ -497,7 +510,7 @@ public class EntryTest {
         }
 
         /**
-         * Restituisce il valore corrente dello stub.
+         * Restituisce il valore corrente dell'entry di confronto.
          *
          * @return valore associato alla chiave
          */
@@ -506,7 +519,7 @@ public class EntryTest {
         }
 
         /**
-         * Sostituisce localmente il valore dello stub.
+         * Sostituisce localmente il valore dell'entry di confronto.
          *
          * @param newValue nuovo valore da memorizzare
          * @return valore presente prima della sostituzione
@@ -518,9 +531,9 @@ public class EntryTest {
         }
 
         /**
-         * Confronta lo stub con un'altra entry in base a chiave e valore.
+         * Confronta questa entry con un'altra entry in base a chiave e valore.
          *
-         * @param object oggetto da confrontare con questo stub
+         * @param object oggetto da confrontare con questa entry di confronto
          * @return {@code true} se l'oggetto è una {@code HMap.Entry} con la
          *         stessa chiave e lo stesso valore, {@code false} altrimenti
          */

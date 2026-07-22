@@ -104,7 +104,7 @@ public class ViewsTest {
      * <p><b>Test Description:</b></p>
      * <p>Il test acquisisce nell'ordine {@code keySet()}, {@code values()} ed
      * {@code entrySet()}; inserisce {@code c=3} mediante {@code put()}; infine
-     * cerca {@code c}, {@code 3} e una {@link EntryStub} equivalente nelle
+     * cerca {@code c}, {@code 3} e una {@link EntryComp} equivalente nelle
      * tre viste acquisite prima dell'inserimento.</p>
      * <p><b>Pre-Condition:</b></p>
      * <p>La fixture contiene esattamente {@code a=1} e {@code b=2}; le tre
@@ -116,7 +116,7 @@ public class ViewsTest {
      * coppia chiave-valore.</p>
      * <p><b>Expected Results:</b></p>
      * <p>{@code keys.contains("c")}, {@code values.contains("3")} ed
-     * {@code entries.contains(new EntryStub("c", "3"))} restituiscono tutte
+     * {@code entries.contains(new EntryComp("c", "3"))} restituiscono tutte
      * {@code true}.</p>
      */
     @Test
@@ -127,7 +127,7 @@ public class ViewsTest {
         map.put("c", "3");
         assertTrue(keys.contains("c"));
         assertTrue(values.contains("3"));
-        assertTrue(entries.contains(new EntryStub("c", "3")));
+        assertTrue(entries.contains(new EntryComp("c", "3")));
     }
 
     /**
@@ -164,7 +164,7 @@ public class ViewsTest {
         map.remove("a");
         assertFalse(keys.contains("a"));
         assertFalse(values.contains("1"));
-        assertFalse(entries.contains(new EntryStub("a", "1")));
+        assertFalse(entries.contains(new EntryComp("a", "1")));
         map.clear();
         assertTrue(keys.isEmpty());
         assertTrue(values.isEmpty());
@@ -428,7 +428,7 @@ public class ViewsTest {
      * {@code contains()} accetti una corrispondenza parziale o un tipo errato.</p>
      * <p><b>Test Description:</b></p>
      * <p>Il test interroga la stessa {@code entrySet()} prima con una
-     * {@link EntryStub} equivalente al mapping {@code a=1}, poi con una entry
+     * {@link EntryComp} equivalente al mapping {@code a=1}, poi con una entry
      * dal valore diverso, con una entry dalla chiave assente e infine con una
      * stringa che ne imita soltanto la rappresentazione testuale.</p>
      * <p><b>Pre-Condition:</b></p>
@@ -444,9 +444,9 @@ public class ViewsTest {
      */
     @Test
     public void entrySetContainsRequiresMatchingKeyAndValue() {
-        assertTrue(map.entrySet().contains(new EntryStub("a", "1")));
-        assertFalse(map.entrySet().contains(new EntryStub("a", "2")));
-        assertFalse(map.entrySet().contains(new EntryStub("missing", "1")));
+        assertTrue(map.entrySet().contains(new EntryComp("a", "1")));
+        assertFalse(map.entrySet().contains(new EntryComp("a", "2")));
+        assertFalse(map.entrySet().contains(new EntryComp("missing", "1")));
         assertFalse(map.entrySet().contains("a=1"));
     }
 
@@ -471,9 +471,9 @@ public class ViewsTest {
      */
     @Test
     public void entrySetRemoveRequiresMatchingKeyAndValue() {
-        assertFalse(map.entrySet().remove(new EntryStub("a", "2")));
+        assertFalse(map.entrySet().remove(new EntryComp("a", "2")));
         assertTrue(map.containsKey("a"));
-        assertTrue(map.entrySet().remove(new EntryStub("a", "1")));
+        assertTrue(map.entrySet().remove(new EntryComp("a", "1")));
         assertFalse(map.containsKey("a"));
     }
 
@@ -943,8 +943,8 @@ public class ViewsTest {
         HSet view = map.entrySet();
         assertFalse(view.retainAll(view));
         assertEquals(2, map.size());
-        assertTrue(view.contains(new EntryStub("a", "1")));
-        assertTrue(view.contains(new EntryStub("b", "2")));
+        assertTrue(view.contains(new EntryComp("a", "1")));
+        assertTrue(view.contains(new EntryComp("b", "2")));
         assertEquals("1", map.get("a"));
         assertEquals("2", map.get("b"));
     }
@@ -1343,7 +1343,7 @@ public class ViewsTest {
     public void addIsUnsupportedByEveryView() {
         expectUnsupportedAdd(map.keySet(), "c");
         expectUnsupportedAdd(map.values(), "3");
-        expectUnsupportedAdd(map.entrySet(), new EntryStub("c", "3"));
+        expectUnsupportedAdd(map.entrySet(), new EntryComp("c", "3"));
         assertEquals(2, map.size());
     }
 
@@ -1704,29 +1704,33 @@ public class ViewsTest {
     }
 
     /**
-     * Implementazione minima di {@link HMap.Entry} usata per confrontare le
-     * entry prodotte dall'adapter senza dipendere dalla loro classe privata.
+     * Entry di confronto minima e indipendente che implementa
+     * {@link HMap.Entry}. Il suffisso {@code Comp}, abbreviazione di
+     * {@code comparison}, chiarisce che la classe rappresenta coppie chiave-valore
+     * attese da confrontare con le entry prodotte dall'adapter, senza dipendere
+     * dalla loro classe privata. In questo modo il valore atteso non viene
+     * costruito usando la stessa implementazione sottoposta al test.
      */
-    private static final class EntryStub implements HMap.Entry {
-        /** Chiave rappresentata dalla entry di supporto. */
+    private static final class EntryComp implements HMap.Entry {
+        /** Chiave rappresentata dall'entry di confronto. */
         private final Object key;
 
-        /** Valore corrente della entry di supporto. */
+        /** Valore corrente dell'entry di confronto. */
         private Object value;
 
         /**
-         * Crea una entry indipendente con la coppia indicata.
+         * Crea un'entry di confronto indipendente con la coppia indicata.
          *
          * @param entryKey chiave da rappresentare
          * @param entryValue valore iniziale associato alla chiave
          */
-        private EntryStub(Object entryKey, Object entryValue) {
+        private EntryComp(Object entryKey, Object entryValue) {
             key = entryKey;
             value = entryValue;
         }
 
         /**
-         * Restituisce la chiave memorizzata nello stub.
+         * Restituisce la chiave memorizzata nell'entry di confronto.
          *
          * @return chiave della entry
          */
@@ -1735,7 +1739,7 @@ public class ViewsTest {
         }
 
         /**
-         * Restituisce il valore corrente dello stub.
+         * Restituisce il valore corrente dell'entry di confronto.
          *
          * @return valore associato localmente
          */
