@@ -1094,442 +1094,418 @@ public void putAllWithSameMapIsStable() {
     assertEquals("2", map.get("b"));
 }
 
-    /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica le operazioni di copia quando la mappa sorgente è vuota.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Lo stesso caso limite viene applicato sia a {@code putAll} sia al
-     * costruttore di copia. In questo modo si controlla che entrambi i percorsi
-     * accettino una sorgente valida priva di mapping, senza confonderla con una
-     * sorgente {@code null}. L'ultima asserzione controlla inoltre che
-     * {@code equals} consideri uguali due mappe vuote distinte.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Il test crea una sorgente vuota, la passa a {@code map.putAll(empty)} e
-     * verifica che la fixture sia vuota. Costruisce poi un nuovo
-     * {@link MapAdapter} dalla stessa sorgente, ne controlla lo stato di vuoto e
-     * infine confronta sorgente e copia con {@code equals}.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * {@link #setUp()} ha creato una destinazione vuota e il test crea una seconda
-     * istanza valida, anch'essa vuota, da usare come sorgente comune alle due
-     * operazioni di copia.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * Sia la fixture sia la nuova copia rimangono vuote.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * {@code isEmpty()} restituisce {@code true} per entrambe le destinazioni e
-     * la copia risulta uguale alla sorgente vuota.
-     * </p>
-     */
-    @Test
-    public void copyingEmptyMapPreservesEmptyContent() {
-        HMap empty = new MapAdapter();
-        map.putAll(empty);
-        assertTrue(map.isEmpty());
-        HMap copy = new MapAdapter(empty);
-        assertTrue(copy.isEmpty());
-        assertEquals(empty, copy);
-    }
+/**
+ * <p>
+ * <b>Summary:</b>
+ * Verifica il comportamento di {@code putAll()} e del costruttore di copia
+ * quando la mappa sorgente è vuota.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * La stessa mappa vuota viene utilizzata prima come sorgente di
+ * {@code putAll()} e poi come argomento del costruttore di copia. In questo
+ * modo si verifica che una sorgente valida ma priva di associazioni venga
+ * gestita correttamente in entrambi i casi. Il confronto finale controlla
+ * inoltre che due mappe vuote distinte siano considerate uguali.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Crea una mappa sorgente vuota e la passa a {@code map.putAll(empty)}.
+ * Costruisce poi una nuova {@link MapAdapter} dalla stessa sorgente e
+ * controlla lo stato delle due destinazioni e l'uguaglianza tra sorgente
+ * e copia.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * La mappa di destinazione e la sorgente sono due istanze valide e vuote.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * La destinazione, la sorgente e la copia rimangono vuote.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * {@code isEmpty()} restituisce {@code true} per la destinazione e per la
+ * copia; inoltre, la copia risulta uguale alla sorgente vuota.
+ * </p>
+ */
+@Test
+public void copyingEmptyMapPreservesEmptyContent() {
+    HMap empty = new MapAdapter();
+    map.putAll(empty);
+    assertTrue(map.isEmpty());
+    HMap copy = new MapAdapter(empty);
+    assertTrue(copy.isEmpty());
+    assertEquals(empty, copy);
+}
+
+/**
+ * <p>
+ * <b>Summary:</b>
+ * Verifica che il costruttore di copia crei una mappa uguale
+ * alla sorgente, ma indipendente da essa.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * La sorgente viene popolata con due coppie e utilizzata per costruire
+ * una seconda mappa. Dopo aver verificato l'uguaglianza iniziale, una chiave
+ * viene rimossa solamente dalla sorgente. La permanenza della stessa chiave
+ * nella copia dimostra che le due mappe possiedono strutture indipendenti.
+ * Il test non richiede una copia profonda degli oggetti usati come chiavi
+ * e valori.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Inserisce  {@code "a"="1"} e {@code "b"="2"} nella
+ * sorgente e costruisce {@code copy}. Verifica inizialmente l'uguaglianza
+ * delle due mappe, quindi rimuove {@code "a"} dalla sorgente e controlla
+ * che la copia conservi entrambe le associazioni.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * La mappa sorgente contiene {@code "a"="1"} e {@code "b"="2"}.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * La sorgente non contiene più la chiave {@code "a"}, mentre la copia
+ * conserva il proprio contenuto originale.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * Sorgente e copia risultano uguali subito dopo la costruzione. Dopo la
+ * modifica della sorgente, {@code copy.containsKey("a")} restituisce
+ * {@code true} e {@code copy.size()} restituisce {@code 2}.
+ * </p>
+ */
+@Test
+public void copyConstructorCreatesIndependentEqualMap() {
+    map.put("a", "1");
+    map.put("b", "2");
+    HMap copy = new MapAdapter(map);
+    assertEquals(map, copy);
+    map.remove("a");
+    assertTrue(copy.containsKey("a"));
+    assertEquals(2, copy.size());
+}
+
+/**
+ * <p>
+ * <b>Summary:</b>
+ * Verifica che il costruttore di copia rifiuti una sorgente
+ * {@code null}.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * Il riferimento {@code null} viene convertito in
+ * {@link HMap} per selezionare il costruttore di copia. L'eccezione attesa
+ * viene indicata nell'annotazione {@link Test}, poiché non sono necessarie
+ * ulteriori verifiche dopo il tentativo di costruzione.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Tenta di costruire una nuova {@link MapAdapter} passando un riferimento
+ * {@link HMap} nullo.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * Il riferimento passato al costruttore di copia è {@code null}.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * La costruzione della nuova mappa non viene completata.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * Il costruttore solleva una {@link NullPointerException}.
+ * </p>
+ */
+@Test(expected = NullPointerException.class)
+public void copyConstructorRejectsNullMap() {
+    new MapAdapter((HMap) null);
+}
+
+/**
+ * <p>
+ * <b>Summary:</b>
+ * Controlla il corretto funzionamento di {@code equals()} tra mappe con lo stesso contenuto.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * Vengono utilizzate tre mappe distinte con lo stesso contenuto. Nella
+ * seconda mappa le associazioni sono inserite in ordine inverso, così da
+ * verificare che l'uguaglianza dipenda dalle associazioni presenti e non
+ * dall'ordine di inserimento. I confronti eseguiti permettono di controllare
+ * separatamente le tre proprietà considerate.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Popola le tre mappe con {@code "a"="1"} e {@code "b"="2"}.
+ * Confronta la prima mappa con se stessa, la prima e la seconda in entrambe
+ * le direzioni e, infine, confronta la seconda e la terza e la prima e la
+ * terza.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * Le tre mappe sono istanze distinte e contengono le stesse due
+ * associazioni, inserite in sequenze diverse.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * Il contenuto delle tre mappe rimane invariato.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * Tutti i confronti restituiscono {@code true}, confermando riflessività,
+ * simmetria, transitività e indipendenza dall'ordine di inserimento.
+ * </p>
+ */
+
+@Test
+public void equalsIsReflexiveSymmetricAndTransitive() {
+    HMap second = new MapAdapter();
+    HMap third = new MapAdapter();
+    map.put("a", "1");
+    map.put("b", "2");
+    second.put("b", "2");
+    second.put("a", "1");
+    third.put("a", "1");
+    third.put("b", "2");
+    assertTrue(map.equals(map));
+    assertTrue(map.equals(second));
+    assertTrue(second.equals(map));
+    assertTrue(second.equals(third));
+    assertTrue(map.equals(third));
+}
+
+/**
+ * <p>
+ * <b>Summary:</b>
+ * Verifica che {@code equals()} restituisca {@code false} per mappe con
+ * associazioni diverse, per {@code null} e per oggetti di tipo
+ * incompatibile.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * Le tre mappe utilizzate hanno tutte dimensione 1, ma differiscono
+ * prima per la chiave e poi per il valore. Mantenere uguale la dimensione
+ * permette di verificare il confronto. Vengono
+ * inoltre controllati un riferimento {@code null} e un oggetto che non
+ * implementa {@link HMap}.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Inserisce {@code "a"="1"} nella mappa, {@code "b"="1"} nella seconda
+ * mappa e {@code "a"="different"} nella terza. Confronta quindi la mappa iniziale
+ * con le due mappe, con {@code null} e con la stringa
+ * {@code "not a map"}.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * Le tre mappe sono istanze valide con una sola associazione ciascuna. Gli
+ * altri oggetti confrontati sono un riferimento {@code null} e una
+ * {@link String}.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * Il contenuto delle mappe rimane invariato.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * {@code equals()} restituisce {@code false} per la mappa con chiave
+ * diversa, per quella con valore diverso, per {@code null} e per l'oggetto
+ * che non implementa {@link HMap}.
+ * </p>
+ */
+@Test
+public void equalsRejectsDifferentMappingsNullAndOtherTypes() {
+    HMap other = new MapAdapter();
+    HMap sameKeyDifferentValue = new MapAdapter();
+    map.put("a", "1");
+    other.put("b", "1");
+    sameKeyDifferentValue.put("a", "different");
+    assertFalse(map.equals(other));
+    assertFalse(map.equals(sameKeyDifferentValue));
+    assertFalse(map.equals(null));
+    assertFalse(map.equals("not a map"));
+}
 
     /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica l'uguaglianza iniziale della copia e, dopo una chiamata a
-     * {@code remove("a")} sulla sorgente, controlla nella copia la presenza
-     * della chiave {@code "a"} e la dimensione.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Prima si confrontano sorgente e copia, poi si invoca {@code remove("a")}
-     * soltanto sulla sorgente. Questa seconda fase permette di controllare che
-     * nella copia la chiave {@code "a"} sia ancora presente e la dimensione
-     * valga due. Il test non richiede una copia profonda di chiavi e valori e
-     * non rilegge il mapping {@code "b"} dopo la modifica della sorgente.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Il test inserisce due mapping nella fixture, costruisce {@code copy} dalla
-     * fixture e verifica l'uguaglianza iniziale. Poi invoca
-     * {@code map.remove("a")} e controlla che nella copia la chiave sia ancora
-     * presente e la dimensione sia ancora pari a due.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * La fixture nasce vuota; prima della costruzione viene usata come sorgente e
-     * contiene i due mapping distinti {@code "a"="1"} e {@code "b"="2"}.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * Dopo {@code map.remove("a")}, {@code copy.containsKey("a")} restituisce
-     * {@code true} e {@code copy.size()} restituisce {@code 2}. Il test non
-     * ricontrolla il contenuto finale della sorgente né il valore della chiave
-     * {@code "b"} nella copia.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * {@code assertEquals(map, copy)} riesce subito dopo la costruzione; dopo la
-     * modifica della sorgente, {@code copy.containsKey("a")} restituisce
-     * {@code true} e {@code copy.size()} restituisce {@code 2}.
-     * </p>
-     */
-    @Test
-    public void copyConstructorCreatesIndependentEqualMap() {
-        map.put("a", "1");
-        map.put("b", "2");
-        HMap copy = new MapAdapter(map);
-        assertEquals(map, copy);
-        map.remove("a");
-        assertTrue(copy.containsKey("a"));
-        assertEquals(2, copy.size());
-    }
+ * <p>
+ * <b>Summary:</b>
+ * Verifica che {@code hashCode()} calcoli il codice hash della mappa come
+ * somma dei codici hash delle singole entry.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * La mappa viene popolata con due coppie di stringhe. Il valore
+ * atteso viene calcolato direttamente nel test applicando con
+ * l'operatore XOR tra il codice hash della chiave e quello del valore, poi
+ * sommando i due risultati. Non viene utilizzato
+ * {@code entrySet().hashCode()}, così il valore del test rimane indipendente
+ * dall'implementazione verificata.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Inserisce  {@code "a"="1"} e {@code "b"="2"}, calcola
+ * esplicitamente il codice hash atteso e lo confronta con il risultato
+ * restituito da {@code map.hashCode()}.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * La mappa è valida e contiene {@code "a"="1"} e
+ * {@code "b"="2"}, con chiavi e valori non nulli.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * Il contenuto della mappa rimane invariato.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * {@code map.hashCode()} restituisce un valore uguale a
+ * {@code ("a".hashCode() ^ "1".hashCode())
+ * + ("b".hashCode() ^ "2".hashCode())}.
+ * </p>
+ */
+@Test
+public void hashCodeIsSumOfEntryHashCodes() {
+    map.put("a", "1");
+    map.put("b", "2");
+    int expected = ("a".hashCode() ^ "1".hashCode())
+            + ("b".hashCode() ^ "2".hashCode());
+    assertEquals(expected, map.hashCode());
+}
 
-    /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica che il costruttore di copia rifiuti una sorgente {@code null}.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Il cast esplicito a {@link HMap} seleziona senza ambiguità il costruttore
-     * di copia. L'eccezione è dichiarata nell'annotazione JUnit perché non è
-     * necessario eseguire altre verifiche dopo il tentativo di costruzione. Il
-     * caso è distinto dalla copia di una mappa vuota per controllare che il
-     * costruttore riconosca la differenza tra una sorgente valida priva di
-     * mapping e una sorgente {@code null}.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Il test valuta l'espressione {@code new MapAdapter((HMap) null)}; il cast
-     * forza la selezione del costruttore di copia e JUnit confronta l'eccezione
-     * risultante con il tipo dichiarato nell'annotazione.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * Il riferimento fornito come sorgente di tipo {@link HMap} vale
-     * {@code null}; non è richiesto alcuno stato della fixture.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * La costruzione di {@link MapAdapter} non viene completata. Il test non
-     * esegue ulteriori verifiche sulla fixture.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * La costruzione con una sorgente {@code null} solleva
-     * {@link NullPointerException}.
-     * </p>
-     */
-    @Test(expected = NullPointerException.class)
-    public void copyConstructorRejectsNullMap() {
-        new MapAdapter((HMap) null);
-    }
+/**
+ * <p>
+ * <b>Summary:</b>
+ * Verifica la coerenza tra i metodi {@code equals()} e
+ * {@code hashCode()} per due mappe uguali.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * Vengono utilizzate due mappe distinte ma con le stesse coppie,
+ * inserite però in ordine inverso. Prima si verifica che le mappe siano uguali
+ * e poi si confrontano i rispettivi codici hash. L'ordine diverso permette
+ * inoltre di controllare che il risultato non dipenda dalla sequenza di
+ * inserimento.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Inserisce {@code "a"="1"} e {@code "b"="2"} in entrambe le mappe,
+ * utilizzando un ordine diverso. Verifica quindi la loro uguaglianza e
+ * confronta i valori restituiti da {@code hashCode()}.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * Le due mappe sono istanze distinte e contengono le stesse associazioni,
+ * inserite in sequenze diverse.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * Il contenuto delle due mappe rimane invariato.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * Le mappe risultano uguali e restituiscono lo stesso codice hash, come
+ * richiesto dal contratto tra {@code equals()} e {@code hashCode()}.
+ * </p>
+ */
+@Test
+public void equalMapsHaveEqualHashCodes() {
+    HMap other = new MapAdapter();
+    map.put("a", "1");
+    map.put("b", "2");
+    other.put("b", "2");
+    other.put("a", "1");
+    assertEquals(map, other);
+    assertEquals(map.hashCode(), other.hashCode());
+}
 
-    /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica riflessività, simmetria e transitività di {@code equals} per
-     * mappe con gli stessi mapping.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Tre mappe distinte vengono popolate con lo stesso contenuto; nella seconda
-     * l'ordine di inserimento è invertito. La scelta controlla sia le proprietà
-     * generali di {@code equals} sia l'indipendenza dall'ordine non garantito da
-     * {@code Hashtable}. Una sola istanza è sufficiente per la riflessività,
-     * due direzioni di confronto sulla stessa coppia verificano la simmetria e la
-     * terza istanza rende possibile controllare esplicitamente la transitività.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Il test crea {@code second} e {@code third}, quindi popola tutte e tre le
-     * mappe con gli stessi due mapping, invertendo l'ordine in {@code second}.
-     * Confronta la fixture con se stessa, la fixture e {@code second} in entrambe
-     * le direzioni, poi {@code second} con {@code third} e infine la fixture con
-     * {@code third}.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * JUnit ha creato la fixture vuota e il test crea altre due mappe vuote; prima
-     * dei confronti, le tre istanze contengono {@code "a"="1"} e
-     * {@code "b"="2"}, pur essendo state popolate in sequenze diverse.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * Il test non verifica nuovamente il contenuto finale delle mappe; le
-     * asserzioni riguardano soltanto i risultati restituiti da {@code equals}.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * Restituiscono {@code true} i cinque confronti eseguiti: riflessività della
-     * fixture, due direzioni tra fixture e {@code second}, uguaglianza tra
-     * {@code second} e {@code third} e uguaglianza tra fixture e {@code third}.
-     * </p>
-     */
-    @Test
-    public void equalsIsReflexiveSymmetricAndTransitive() {
-        HMap second = new MapAdapter();
-        HMap third = new MapAdapter();
-        map.put("a", "1");
-        map.put("b", "2");
-        second.put("b", "2");
-        second.put("a", "1");
-        third.put("a", "1");
-        third.put("b", "2");
-        assertTrue(map.equals(map));
-        assertTrue(map.equals(second));
-        assertTrue(second.equals(map));
-        assertTrue(second.equals(third));
-        assertTrue(map.equals(third));
-    }
-
-    /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica che {@code equals} rifiuti contenuti differenti, {@code null} e
-     * oggetti che non implementano {@link HMap}.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Le mappe confrontate hanno tutte dimensione {@code 1}, ma differiscono
-     * prima per chiave e poi per valore. Mantenere uguale la dimensione impedisce
-     * che un controllo preliminare sul numero di elementi nasconda errori nel
-     * confronto dei mapping. Si aggiungono inoltre i casi di tipo incompatibile
-     * e riferimento nullo. Gli ultimi due confronti controllano che
-     * {@code map.equals(...)} restituisca {@code false} quando riceve una
-     * stringa o un riferimento nullo. L'uso di quattro asserzioni separate permette
-     * di attribuire
-     * un eventuale fallimento alla specifica categoria di non uguaglianza.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Il test prepara nella fixture {@code "a"="1"}, in {@code other}
-     * {@code "b"="1"} e in {@code sameKeyDifferentValue}
-     * {@code "a"="different"}. Poi confronta la fixture, nell'ordine, con le due
-     * mappe, con {@code null} e con la stringa {@code "not a map"}.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * La fixture e le due mappe locali sono istanze distinte e valide; prima dei
-     * confronti ciascuna contiene un solo mapping, mentre gli altri argomenti
-     * sono un riferimento nullo e un oggetto di tipo {@link String}.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * Il test non verifica nuovamente il contenuto finale delle mappe; le
-     * asserzioni riguardano soltanto i risultati restituiti da {@code equals}.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * Restituiscono {@code false} tutti e quattro i confronti: quello con chiave
-     * diversa, quello con valore diverso, quello con {@code null} e quello con
-     * l'oggetto che non implementa {@link HMap}.
-     * </p>
-     */
-    @Test
-    public void equalsRejectsDifferentMappingsNullAndOtherTypes() {
-        HMap other = new MapAdapter();
-        HMap sameKeyDifferentValue = new MapAdapter();
-        map.put("a", "1");
-        other.put("b", "1");
-        sameKeyDifferentValue.put("a", "different");
-        assertFalse(map.equals(other));
-        assertFalse(map.equals(sameKeyDifferentValue));
-        assertFalse(map.equals(null));
-        assertFalse(map.equals("not a map"));
-    }
-
-    /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica la formula usata per calcolare il codice hash della mappa.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Si usano due mapping formati da stringhe, i cui codici hash sono stabili e
-     * possono essere combinati direttamente nel test. Il valore atteso viene
-     * calcolato come somma dei codici delle entry, ciascuno ottenuto tramite XOR
-     * tra chiave e valore, secondo il contratto di {@code Map}. Calcolare
-     * l'oracolo nel test, senza riutilizzare {@code entrySet().hashCode()}, evita
-     * che lo stesso eventuale errore dell'implementazione influenzi sia il valore
-     * effettivo sia quello atteso.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Inserisce {@code "a"="1"} e {@code "b"="2"}, calcola esplicitamente il
-     * risultato atteso applicando XOR a ogni coppia e sommando i due contributi;
-     * infine confronta tale intero con il risultato di {@code map.hashCode()}.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * La fixture nasce vuota; prima del calcolo contiene due mapping con chiavi e
-     * valori non nulli, i cui metodi {@code hashCode} sono quelli di
-     * {@link String}.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * Il test non verifica nuovamente il contenuto della mappa; l'unica
-     * asserzione riguarda il codice hash restituito.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * Il codice restituito coincide con
-     * {@code ("a".hashCode() ^ "1".hashCode())
-     * + ("b".hashCode() ^ "2".hashCode())}.
-     * </p>
-     */
-    @Test
-    public void hashCodeIsSumOfEntryHashCodes() {
-        map.put("a", "1");
-        map.put("b", "2");
-        int expected = ("a".hashCode() ^ "1".hashCode())
-                + ("b".hashCode() ^ "2".hashCode());
-        assertEquals(expected, map.hashCode());
-    }
-
-    /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica la coerenza tra {@code equals} e {@code hashCode}.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Due istanze vengono popolate con gli stessi mapping in ordine opposto.
-     * Prima si accerta la loro uguaglianza, poi si confrontano i codici hash:
-     * questa sequenza verifica direttamente l'implicazione richiesta dal
-     * contratto degli oggetti uguali. L'ordine invertito è stato scelto per non
-     * rendere il risultato dipendente dalla sequenza di inserimento o
-     * dall'ordine di enumerazione interno.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Inserisce le coppie {@code "a"="1"} e {@code "b"="2"} nelle due mappe
-     * con ordine diverso. Verifica prima {@code assertEquals(map, other)} e poi
-     * confronta gli interi restituiti dai due metodi {@code hashCode()}.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * La fixture e {@code other} sono istanze distinte; prima delle asserzioni
-     * contengono gli stessi due mapping, inseriti in sequenza opposta.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * Il test non verifica nuovamente il contenuto finale delle due mappe; le
-     * asserzioni riguardano la loro uguaglianza e i codici hash restituiti.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * Le mappe risultano uguali e producono lo stesso valore di
-     * {@code hashCode()}.
-     * </p>
-     */
-    @Test
-    public void equalMapsHaveEqualHashCodes() {
-        HMap other = new MapAdapter();
-        map.put("a", "1");
-        map.put("b", "2");
-        other.put("b", "2");
-        other.put("a", "1");
-        assertEquals(map, other);
-        assertEquals(map.hashCode(), other.hashCode());
-    }
-
-    /**
-     * <p>
-     * <b>Summary:</b>
-     * Verifica che la rappresentazione testuale includa le stringhe
-     * {@code "a=1"} e {@code "b=2"} relative ai due mapping inseriti.
-     * </p>
-     *
-     * <p>
-     * <b>Test Case Design:</b>
-     * Il test cerca separatamente le due sottostringhe {@code "a=1"} e
-     * {@code "b=2"}, senza confrontare l'intera stringa. Questa scelta evita di
-     * imporre un ordine che {@code Hashtable} non garantisce e concentra la
-     * verifica sulle due associazioni controllate dal test. Due mapping distinti
-     * sono stati scelti per controllare che entrambe le coppie compaiano nella
-     * rappresentazione. {@code indexOf >= 0} controlla la presenza delle due
-     * coppie senza imporre parentesi, posizione o separatori tra i diversi
-     * mapping; il test richiede invece il formato {@code chiave=valore}.
-     * </p>
-     *
-     * <p>
-     * <b>Test Description:</b>
-     * Il test inserisce {@code "a"="1"} e {@code "b"="2"}, salva il risultato di
-     * {@code toString()} in {@code representation} e applica separatamente
-     * {@code indexOf} alle sottostringhe {@code "a=1"} e {@code "b=2"}.
-     * </p>
-     *
-     * <p>
-     * <b>Pre-Condition:</b>
-     * La fixture nasce vuota; prima della conversione contiene esattamente i due
-     * mapping non nulli {@code "a"="1"} e {@code "b"="2"}.
-     * </p>
-     *
-     * <p>
-     * <b>Post-Condition:</b>
-     * Il test non verifica nuovamente il contenuto della mappa; le asserzioni
-     * riguardano soltanto la stringa restituita da {@code toString()}.
-     * </p>
-     *
-     * <p>
-     * <b>Expected Results:</b>
-     * La rappresentazione contiene sia {@code "a=1"} sia {@code "b=2"}, in
-     * qualunque ordine; per entrambe le ricerche {@code indexOf} restituisce un
-     * indice maggiore o uguale a zero.
-     * </p>
-     */
-    @Test
-    public void toStringContainsEveryMapping() {
-        map.put("a", "1");
-        map.put("b", "2");
-        String representation = map.toString();
-        assertTrue(representation.indexOf("a=1") >= 0);
-        assertTrue(representation.indexOf("b=2") >= 0);
-    }
+/**
+ * <p>
+ * <b>Summary:</b>
+ * Verifica che {@code toString()} includa una rappresentazione di tutte le
+ * associazioni presenti nella mappa.
+ * </p>
+ *
+ * <p>
+ * <b>Test Case Design:</b>
+ * Nella mappa vengono inserite due coppie e la loro presenza viene
+ * controllata separatamente nella stringa restituita. Non viene confrontata
+ * l'intera rappresentazione testuale, perché {@code Hashtable} non garantisce
+ * un ordine specifico. Il test controlla quindi il formato
+ * {@code chiave=valore} senza imporre l'ordine, le parentesi o i separatori
+ * usati tra le associazioni.
+ * </p>
+ *
+ * <p>
+ * <b>Test Description:</b>
+ * Inserisce {@code "a"="1"} e {@code "b"="2"}, richiama
+ * {@code toString()} e cerca nella stringa ottenuta le sottostringhe
+ * {@code "a=1"} e {@code "b=2"}.
+ * </p>
+ *
+ * <p>
+ * <b>Pre-Condition:</b>
+ * La mappa contiene esattamente le associazioni {@code "a"="1"} e
+ * {@code "b"="2"}.
+ * </p>
+ *
+ * <p>
+ * <b>Post-Condition:</b>
+ * Il contenuto della mappa rimane invariato e la variabile
+ * {@code representation} contiene la sua rappresentazione testuale.
+ * </p>
+ *
+ * <p>
+ * <b>Expected Results:</b>
+ * La stringa contiene sia {@code "a=1"} sia {@code "b=2"}, indipendentemente
+ * dall'ordine in cui compaiono.
+ * </p>
+ */
+@Test
+public void toStringContainsEveryMapping() {
+    map.put("a", "1");
+    map.put("b", "2");
+    String representation = map.toString();
+    assertTrue(representation.indexOf("a=1") >= 0);
+    assertTrue(representation.indexOf("b=2") >= 0);
+}
 
     /**
      * Oggetto di supporto che riconosce per identità un solo riferimento.
