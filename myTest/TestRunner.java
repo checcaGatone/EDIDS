@@ -6,35 +6,24 @@ import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 
 /**
- * Punto di ingresso da riga di comando per l'intera suite JUnit del progetto.
- *
+ * 
  * <p><b>Requisiti di esecuzione:</b>
- * Il progetto utilizza esplicitamente JUnit 4.13, distribuito nel file
- * {@code JUnit/junit-4.13.jar}, e Hamcrest Core 1.3, contenuto in
- * {@code JUnit/hamcrest-core-1.3.jar}. Dopo avere compilato i package
- * {@code myAdapter} e {@code myTest} nella directory {@code build}, in ambiente
- * Windows il runner può essere avviato dalla radice della consegna con
- * {@code java -cp "build;JUnit/junit-4.13.jar;JUnit/hamcrest-core-1.3.jar"
- * myTest.TestRunner}. Su sistemi che usano i due punti come separatore del
- * classpath occorre sostituire i punti e virgola con {@code :}. Non è richiesto
- * un IDE e non sono previsti argomenti applicativi.</p>
+ * Il progetto utilizza esplicitamente JUnit 4.13 e Hamcrest Core 1.3.
+ * Dopo avere compilato i package
+ * {@code myAdapter} e {@code myTest} nella directory {@code build}.
+ * .</p>
  *
  * <p><b>Composizione della suite:</b>
  * Le classi sono passate esplicitamente a {@link JUnitCore#runClasses(Class...)}
- * per rendere verificabile la suddivisione richiesta dalla consegna. La suite
- * comprende i 28 test di {@link MapAdapterTest}, i 50 test di {@link ViewsTest},
- * i 16 test di {@link IteratorTest} e gli 11 test di {@link EntryTest}, per un
- * totale attuale di 105 metodi di test. L'ordine dell'elenco stabilisce soltanto
- * la composizione del run e non crea dipendenze tra le fixture delle classi.</p>
+ * per rendere verificabile la suddivisione .</p>
  *
  * <p><b>Output prodotto:</b>
  * Il tempo è misurato immediatamente prima e dopo la sola chiamata a JUnit. Per
- * ogni fallimento vengono stampati la dicitura {@code FALLIMENTO}, la descrizione
- * fornita da JUnit e lo stack trace completo. Seguono il numero complessivo dei
+ * ogni fallimento vengono stampati i messaggi di errore e la descrizione
+ * fornita da JUnit . Seguono il numero complessivo dei
  * test eseguiti, quello dei test superati, falliti e ignorati, il tempo in
- * millisecondi e l'esito finale {@code SUCCESSO} oppure {@code FALLIMENTO}. Il
- * conteggio dei test superati è calcolato sottraendo dal numero eseguito sia i
- * fallimenti sia gli assumption failure. Se {@link Result#wasSuccessful()}
+ * millisecondi e l'esito finale {@code SUCCESSO} oppure {@code FALLIMENTO}.
+ * Se {@link Result#wasSuccessful()}
  * restituisce {@code false}, il processo termina con codice {@code 1}; in caso
  * di successo termina normalmente con codice {@code 0}.</p>
  *
@@ -48,12 +37,10 @@ import org.junit.runner.notification.Failure;
 public class TestRunner {
     /**
      * Avvia tramite JUnit 4.13 le quattro classi della suite e stampa il
-     * resoconto richiesto dalla consegna. Gli argomenti della riga di comando
-     * non sono utilizzati, perché la composizione è definita direttamente
+     * resoconto. 
+     * La composizione è definita direttamente
      * tramite {@link JUnitCore#runClasses(Class...)}.
      *
-     * @param args eventuali argomenti della riga di comando; sono accettati dal
-     *             punto di ingresso Java ma ignorati dal runner
      */
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
