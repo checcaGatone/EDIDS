@@ -1507,51 +1507,66 @@ public void toStringContainsEveryMapping() {
     assertTrue(representation.indexOf("b=2") >= 0);
 }
 
+   /**
+ * Oggetto di supporto usato per verificare la direzione del confronto
+ * eseguito da {@code containsValue(Object)}.
+ *
+ * <p>
+ * Il probe (oggetto di confronto) riconosce esclusivamente il riferimento ricevuto durante la
+ * costruzione, confrontandolo per identità. Nei test,
+ * {@code probe.equals(match)} restituisce quindi {@code true}, mentre il
+ * confronto opposto, {@code match.equals(probe)}, restituisce
+ * {@code false}. Questa asimmetria permette di capire quale
+ * dei due oggetti riceve effettivamente la chiamata a {@code equals()}.
+ * </p>
+ *
+ * <p>
+ * La classe viene utilizzata soltanto come supporto ai test e non rappresenta
+ * un normale oggetto valore.
+ * </p>
+ */
+private static final class AsymmetricEqualsProbe {
+
     /**
-     * Oggetto di supporto che riconosce per identità un solo riferimento.
+     * Unico riferimento che il probe riconosce come uguale.
+     */
+    private final Object match;
+
+    /**
+     * Crea un probe associato al riferimento che dovrà essere riconosciuto.
+     *
+     * @param expected riferimento non nullo che il probe deve riconoscere
+     *                 mediante confronto per identità
+     */
+    private AsymmetricEqualsProbe(Object expected) {
+        match = expected;
+    }
+
+    /**
+     * Verifica se l'oggetto ricevuto corrisponde esattamente al riferimento
+     * memorizzato nel probe.
+     *
+     * @param object oggetto da confrontare con il riferimento registrato
+     * @return {@code true} se {@code object} e {@link #match} indicano la
+     *         stessa istanza; {@code false} altrimenti
+     */
+    public boolean equals(Object object) {
+        return object == match;
+    }
+
+    /**
+     * Restituisce lo stesso codice hash del riferimento riconosciuto.
      *
      * <p>
-     * Nei test il probe riconosce il riferimento registrato, mentre l'oggetto
-     * registrato non riconosce il probe. Le due direzioni del confronto
-     * producono quindi risultati diversi e rendono osservabile quale operando
-     * riceve la chiamata a {@code equals} in {@code containsValue}.
+     * Nei test il riferimento registrato è sempre non nullo. Il probe e
+     * l'oggetto riconosciuto producono quindi lo stesso codice hash.
      * </p>
+     *
+     * @return codice hash del riferimento memorizzato in {@link #match}
      */
-    private static final class AsymmetricEqualsProbe {
-        /** Riferimento che deve essere riconosciuto dal confronto. */
-        private final Object match;
-
-        /**
-         * Crea un probe associato al riferimento atteso.
-         *
-         * @param expected riferimento non nullo che il probe deve riconoscere
-         *                 per identità
-         */
-        private AsymmetricEqualsProbe(Object expected) {
-            match = expected;
-        }
-
-        /**
-         * Confronta l'argomento con il solo riferimento registrato.
-         *
-         * @param object oggetto da confrontare con il riferimento atteso
-         * @return {@code true} soltanto se {@code object} e {@link #match}
-         *         indicano la stessa istanza; {@code false} altrimenti
-         */
-        public boolean equals(Object object) {
-            return object == match;
-        }
-
-        /**
-         * Restituisce il codice hash dell'oggetto riconosciuto. Nei test il
-         * riferimento registrato è sempre non nullo; il probe e tale riferimento
-         * producono quindi lo stesso codice hash.
-         *
-         * @return codice hash del riferimento memorizzato in {@link #match}
-         */
-        public int hashCode() {
-            return match.hashCode();
-        }
+    public int hashCode() {
+        return match.hashCode();
     }
+}
 
 }
