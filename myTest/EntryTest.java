@@ -15,9 +15,9 @@ import static org.junit.Assert.fail;
  *
  * <p><b>Summary:</b>
  * La classe verifica il comportamento di {@link HMap.Entry}: lettura della
- * chiave e del valore, aggiornamento tramite {@code setValue()}, collegamento
+ * chiave e valore, aggiornamento tramite {@code setValue()}, collegamento
  * con la mappa originale, uguaglianza, codice hash e rappresentazione testuale.
- * Viene controllato anche il rifiuto di un valore {@code null}, coerente con il
+ * Viene controllato anche il rifiuto di valori {@code null}, coerente con il
  * vincolo imposto da {@code Hashtable}, che costituisce l'oggetto adattato. I
  * metodi coprono
  * lettura e rappresentazione dell'entry, modifica del valore e
@@ -26,23 +26,24 @@ import static org.junit.Assert.fail;
  *
  * <p><b>Test Case Design:</b>
  * Ogni test usa una nuova {@link MapAdapter} contenente il solo mapping
- * {@code a=1}. La presenza di una sola coppia rende univoca l'entry ottenuta
+ * ({@code a=1}). La presenza di una sola coppia rende univoca l'entry ottenuta
  * dall'iteratore e permette di non fare assunzioni sull'ordine della
  * {@code Hashtable}. I valori sono stringhe semplici, così uguaglianza e hash
  * sono deterministici. Quando serve un confronto tra oggetti distinti viene
  * usata {@link EntryComp}, un'implementazione indipendente di {@code HMap.Entry}.
- * Il suffisso {@code Comp}, abbreviazione di {@code comparison}, ne evidenzia
- * il ruolo di entry di confronto. Questa classe permette di rappresentare una
- * coppia attesa senza ottenere una seconda entry dalla mappa.
- * Le asserzioni controllano sia lo stato dell'entry sia, nei test dedicati al
- * collegamento con la mappa, gli effetti osservabili tramite {@code get()},
- * {@code values()} ed {@code entrySet()}. Questa combinazione è stata scelta
- * per distinguere un semplice cambiamento dell'oggetto entry da un reale
- * aggiornamento del mapping. Il test che legge il valore dopo un
- * {@code map.put()} documenta separatamente la scelta concreta di
- * {@code MapAdapter}, la cui entry consulta la mappa a ogni lettura; tale test
- * non presenta il collegamento dinamico dell'entry come un comportamento
- * richiesto in generale da {@code HMap.Entry}.</p>
+ * Questa classe permette di rappresentare una
+ * coppia attesa senza ottenere una seconda entry dalla mappa. 
+ * Nei test di {@code setValue()} non viene controllato soltanto il valore
+ * restituito dall'entry. Il nuovo valore viene cercato anche nella mappa tramite
+ * {@code get()} e nelle viste restituite da {@code values()} ed
+ * {@code entrySet()}. In questo modo si verifica che {@code setValue()} aggiorni
+ * realmente il mapping, invece di modificare soltanto un dato interno
+ * dell'entry. Un test distinto modifica poi la mappa con {@code map.put()} e
+ * controlla il valore attraverso un'entry ottenuta in precedenza. Questo test
+ * documenta una scelta specifica di {@code MapAdapter}: a ogni chiamata a
+ * {@code getValue()}, l'entry legge il valore corrente dalla mappa. Tale
+ * comportamento non viene considerato un requisito generale di
+ * {@code HMap.Entry}, ma una caratteristica dell'implementazione realizzata.</p>
  *
  * @author Filippo Barban
  * @version 1.1.0
@@ -57,7 +58,7 @@ public class EntryTest {
     private HMap.Entry entry;
 
     /**
-     * Prepara una fixture indipendente con il mapping {@code a=1} e ne ricava
+     * Prepara un set up indipendente con il mapping ({@code a=1}) e ne ricava
      * l'unica entry. Ricostruire entrambi gli oggetti prima di ogni test evita
      * che un aggiornamento eseguito da un metodo possa influenzare i successivi.
      */
@@ -74,7 +75,7 @@ public class EntryTest {
      * mapping rappresentato dall'entry.</p>
      *
      * <p><b>Test Case Design:</b>
-     * La fixture contiene la sola coppia {@code a=1}; di conseguenza l'entry
+     * Lo stato iniziale contiene la sola coppia {@code a=1}; di conseguenza l'entry
      * prelevata da {@code entrySet()} è determinata senza dipendere dall'ordine
      * della {@code Hashtable}. Le due asserzioni sono mantenute separate per
      * individuare in modo preciso un eventuale errore su chiave o valore.</p>
@@ -482,8 +483,7 @@ public class EntryTest {
 
     /**
      * Entry di confronto minima e indipendente che implementa
-     * {@link HMap.Entry}. Il suffisso {@code Comp}, abbreviazione di
-     * {@code comparison}, evidenzia che la classe serve a rappresentare una coppia
+     * {@link HMap.Entry}. la classe serve a rappresentare una coppia
      * chiave-valore attesa e a confrontarla con le entry prodotte dalla mappa.
      * Il riferimento alla chiave non viene sostituito, mentre il valore può
      * essere aggiornato localmente; l'oggetto non è collegato a una
