@@ -24,10 +24,9 @@ import static org.junit.Assert.fail;
  * l'effetto di {@link HIterator#remove()} sulla mappa sottostante alle viste.
  * Vengono inoltre verificate {@link NoSuchElementException} e l'eccezione
  * locale {@link MapAdapter.HIllegalStateException} prevista dal progetto per
- * gli stati in cui {@code remove()} non è consentito. I sedici test sono
- * suddivisi concettualmente in quattro categorie descritte in forma discorsiva:
- * attraversamento delle tre viste e gestione dei duplicati, limiti di
- * {@code next()} e natura non distruttiva di {@code hasNext()}, stati legali e
+ * gli stati in cui {@code remove()} non è consentito. I sedici test riguardano
+ * l'attraversamento delle tre viste e la gestione dei duplicati, i limiti di
+ * {@code next()} e la natura non distruttiva di {@code hasNext()}, stati legali e
  * illegali di {@code remove()}, continuità e indipendenza degli iteratori
  * realizzati da {@code MapAdapter}.</p>
  *
@@ -57,7 +56,7 @@ import static org.junit.Assert.fail;
  */
 public class IteratorTest {
     /**
-     * Mappa sostenuta da una nuova istanza di {@link MapAdapter} e ricreata
+     * Mappa realizzata con una nuova istanza di {@link MapAdapter} e ricreata
      * prima di ogni test. I tre mapping distinti permettono di riconoscere le
      * rimozioni senza fare assunzioni sull'ordine di iterazione.
      */
@@ -98,7 +97,8 @@ public class IteratorTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica che l'iteratore di una vista vuota non annunci elementi.</p>
+     * Verifica che {@code hasNext()} restituisca {@code false} per un iteratore
+     * vuoto.</p>
      *
      * <p><b>Test Case Design:</b>
      * Si usa una mappa locale appena costruita, invece della fixture popolata,
@@ -113,8 +113,8 @@ public class IteratorTest {
      * La mappa locale e la sua vista delle chiavi non contengono elementi.</p>
      *
      * <p><b>Post-Condition:</b>
-     * L'iteratore resta posizionato oltre l'insieme vuoto e la mappa locale non
-     * viene modificata.</p>
+     * Il test non modifica esplicitamente la mappa locale e non ne conserva un
+     * riferimento per ricontrollarne lo stato.</p>
      *
      * <p><b>Expected Results:</b>
      * {@code hasNext()} restituisce {@code false}.</p>
@@ -145,8 +145,8 @@ public class IteratorTest {
      * l'iterazione.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La fixture conserva i tre mapping iniziali e la mappa ausiliaria contiene
-     * tutte e sole le chiavi visitate.</p>
+     * La mappa ausiliaria contiene tutte e sole le chiavi osservate dal ciclo.
+     * Il test non ricontrolla separatamente i mapping della fixture.</p>
      *
      * <p><b>Expected Results:</b>
      * Ogni chiave appartiene alla mappa, non compare due volte e il totale dei
@@ -184,8 +184,8 @@ public class IteratorTest {
      * {@code "x"}.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa locale conserva entrambi i mapping e l'iteratore risulta
-     * esaurito dopo due risultati.</p>
+     * Il ciclo termina dopo due risultati. Il test non esegue operazioni
+     * mutative, ma non ricontrolla i mapping della mappa locale.</p>
      *
      * <p><b>Expected Results:</b>
      * L'iteratore restituisce due volte {@code "x"}; nessuna delle due
@@ -231,11 +231,12 @@ public class IteratorTest {
      * l'attraversamento.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa mantiene il contenuto iniziale e l'iteratore ha visitato tutte
-     * le entry.</p>
+     * Il ciclo termina dopo un numero di risultati pari a {@code map.size()}.
+     * Il test non ricontrolla lo stato finale della mappa e non registra le
+     * chiavi già incontrate.</p>
      *
      * <p><b>Expected Results:</b>
-     * Ciascuna entry prodotta possiede una chiave presente e il valore associato
+     * Ciascun'entry prodotta possiede una chiave presente e il valore associato
      * corrente; il numero complessivo dei risultati è pari a tre, cioè a
      * {@code map.size()}.</p>
      */
@@ -258,8 +259,8 @@ public class IteratorTest {
      *
      * <p><b>Test Case Design:</b>
      * Il caso usa la vista {@code values()} di una nuova mappa vuota e invoca
-     * direttamente {@code next()}, così viene esercitato il limite inferiore
-     * dell'attraversamento senza dipendere dalla fixture.</p>
+     * direttamente {@code next()}, così viene esercitato il caso limite
+     * dell'iteratore vuoto senza dipendere dalla fixture.</p>
      *
      * <p><b>Test Description:</b>
      * Costruisce mappa, vista e iteratore in un'unica espressione, quindi tenta
@@ -301,7 +302,8 @@ public class IteratorTest {
      * prima del primo elemento.</p>
      *
      * <p><b>Post-Condition:</b>
-     * L'iteratore resta esaurito e la mappa non viene modificata.</p>
+     * Dopo l'eccezione {@code hasNext()} restituisce ancora {@code false}. Il
+     * test non esegue mutazioni, ma non ricontrolla il contenuto della mappa.</p>
      *
      * <p><b>Expected Results:</b>
      * La lettura successiva all'ultimo elemento solleva
@@ -341,7 +343,8 @@ public class IteratorTest {
      * con successo {@code next()}.</p>
      *
      * <p><b>Post-Condition:</b>
-     * Nessun mapping viene rimosso e la dimensione della mappa resta tre.</p>
+     * Dopo l'eccezione {@code map.size()} restituisce ancora {@code 3}; il test
+     * non ricontrolla singolarmente i mapping.</p>
      *
      * <p><b>Expected Results:</b>
      * {@code remove()} solleva {@link MapAdapter.HIllegalStateException}, non
@@ -365,24 +368,24 @@ public class IteratorTest {
      *
      * <p><b>Test Case Design:</b>
      * La chiave viene salvata dal risultato di {@code next()}, evitando di
-     * prevedere quale elemento venga visitato per primo. Presenza e dimensione
-     * controllano sia il target della rimozione sia il suo unico effetto.</p>
+     * prevedere quale elemento venga visitato per primo. I controlli successivi
+     * verificano la chiave rimossa e la riduzione della dimensione da tre a due.</p>
      *
      * <p><b>Test Description:</b>
      * Legge una chiave, invoca {@code remove()} sullo stesso iteratore e
      * verifica il contenuto attraverso la mappa e la vista {@code keySet()}.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture contiene tre mapping e {@code next()} ha restituito una delle
-     * tre chiavi.</p>
+     * La fixture contiene tre mapping e l'iteratore delle chiavi è appena stato
+     * creato; non è ancora stata eseguita alcuna rimozione.</p>
      *
      * <p><b>Post-Condition:</b>
      * Il mapping associato alla chiave restituita non è più presente e la mappa
      * contiene due elementi.</p>
      *
      * <p><b>Expected Results:</b>
-     * La rimozione è visibile sia dalla mappa sia dalla sua vista backed delle
-     * chiavi.</p>
+     * La chiave restituita non è più presente né nella mappa né nella vista
+     * delle chiavi, e {@code map.size()} restituisce {@code 2}.</p>
      */
     @Test
     public void removeAfterNextDeletesLastReturnedMapping() {
@@ -401,25 +404,26 @@ public class IteratorTest {
      *
      * <p><b>Test Case Design:</b>
      * Tra {@code next()} e {@code remove()} viene inserita soltanto una
-     * interrogazione dello stato. Il caso distingue un controllo non
-     * distruttivo da una nuova chiamata a {@code next()}, che cambierebbe il
-     * target della rimozione.</p>
+     * chiamata a {@code hasNext()}. Il caso controlla che questa chiamata non
+     * renda illegale la rimozione; la mancata consumazione degli elementi è
+     * verificata separatamente da {@link #repeatedHasNextDoesNotConsumeElements()}.</p>
      *
      * <p><b>Test Description:</b>
      * Memorizza la prima chiave restituita, invoca {@code hasNext()}, quindi
      * rimuove e controlla la mappa.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture contiene tre mapping e l'iteratore ha un ultimo elemento
-     * restituito valido.</p>
+     * La fixture contiene tre mapping e l'iteratore delle chiavi è appena stato
+     * creato.</p>
      *
      * <p><b>Post-Condition:</b>
      * La chiave memorizzata non è più presente e la dimensione della mappa è
      * pari a due.</p>
      *
      * <p><b>Expected Results:</b>
-     * {@code remove()} termina normalmente perché {@code hasNext()} non
-     * consuma elementi e non modifica lo stato di rimozione.</p>
+     * Dopo la chiamata intermedia a {@code hasNext()}, {@code remove()} termina
+     * normalmente; la chiave salvata non è più presente e la dimensione vale
+     * due.</p>
      */
     @Test
     public void hasNextBetweenNextAndRemoveKeepsRemoveLegal() {
@@ -446,15 +450,15 @@ public class IteratorTest {
      * lettura ulteriore e invoca infine {@code remove()}.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture contiene tre mapping; prima del tentativo fallito l'iteratore
-     * ha restituito con successo tutte le chiavi.</p>
+     * La fixture contiene tre mapping e l'iteratore delle chiavi è inizialmente
+     * posizionato prima del primo risultato.</p>
      *
      * <p><b>Post-Condition:</b>
      * L'ultima chiave ottenuta viene rimossa e la mappa conserva due mapping.</p>
      *
      * <p><b>Expected Results:</b>
      * Il tentativo oltre la fine solleva {@code NoSuchElementException}, ma non
-     * cancella il diritto di rimuovere l'ultimo risultato valido.</p>
+     * rende illegale la successiva rimozione dell'ultimo risultato valido.</p>
      */
     @Test
     public void failedNextAfterEndPreservesLastSuccessfulRemoveTarget() {
@@ -478,26 +482,27 @@ public class IteratorTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica l'interazione tra una entry backed, {@code setValue()} e la
+     * Verifica l'interazione tra un'entry collegata alla mappa,
+     * {@code setValue()} e la
      * successiva rimozione tramite iteratore.</p>
      *
      * <p><b>Test Case Design:</b>
-     * Il valore della prima entry viene sostituito prima di rimuoverla. I valori
-     * iniziali distinti e il nuovo valore {@code "updated"} permettono di
-     * controllare che scompaia l'intero mapping, non soltanto una delle due
-     * rappresentazioni del valore.</p>
+     * Il valore della prima entry viene sostituito prima di rimuoverla. Salvare
+     * il valore precedente e quello aggiornato permette di verificare che, dopo
+     * la rimozione, nessuno dei due sia ancora presente nella vista dei valori.</p>
      *
      * <p><b>Test Description:</b>
-     * Ottiene una {@link HMap.Entry}, ne salva chiave e valore, aggiorna il
+     * Ottiene un'entry di tipo {@link HMap.Entry}, ne salva chiave e valore,
+     * aggiorna il
      * mapping con {@link HMap.Entry#setValue(Object)} e chiama
      * {@code remove()} sul medesimo iteratore.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture contiene tre mapping; l'iteratore ha restituito una entry
-     * ancora collegata alla mappa.</p>
+     * La fixture contiene tre mapping e l'iteratore delle entry è appena stato
+     * creato.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La chiave della entry non è più presente, la mappa contiene due mapping e
+     * La chiave dell'entry non è più presente, la mappa contiene due mapping e
      * la vista dei valori non contiene né il vecchio né il nuovo valore di quel
      * mapping.</p>
      *
@@ -537,16 +542,16 @@ public class IteratorTest {
      * immediatamente una seconda chiamata a {@code remove()}.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture contiene tre mapping; dopo la prima rimozione non è stato
-     * eseguito un nuovo {@code next()}.</p>
+     * La fixture contiene tre mapping e l'iteratore dei valori è appena stato
+     * creato.</p>
      *
      * <p><b>Post-Condition:</b>
      * È stato eliminato un solo mapping e la dimensione resta pari a due.</p>
      *
      * <p><b>Expected Results:</b>
      * Il secondo tentativo solleva
-     * {@link MapAdapter.HIllegalStateException} e non produce ulteriori
-     * modifiche.</p>
+     * {@link MapAdapter.HIllegalStateException} e la dimensione rimane pari a
+     * due.</p>
      */
     @Test
     public void twoConsecutiveRemovesThrowHIllegalStateException() {
@@ -568,17 +573,17 @@ public class IteratorTest {
      *
      * <p><b>Test Case Design:</b>
      * Ogni {@code next()} è seguito immediatamente da {@code remove()} e un
-     * contatore registra le operazioni eseguite. Il caso esercita la scelta
-     * concreta dello snapshot di chiavi, che mantiene separato lo stato di
-     * attraversamento dalla mappa modificata dallo stesso iteratore.</p>
+     * contatore registra le operazioni eseguite. Il risultato osservato è
+     * coerente con lo snapshot di chiavi usato da {@code MapAdapter}, che
+     * mantiene separato l'avanzamento dalla mappa modificata dall'iteratore.</p>
      *
      * <p><b>Test Description:</b>
      * Attraversa {@code entrySet()}, rimuove ogni entry restituita e controlla
      * infine contatore, mappa e vista.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * La fixture contiene tre mapping e nessuna modifica strutturale viene
-     * eseguita dall'esterno dell'iteratore.</p>
+     * La fixture contiene tre mapping e non viene modificata direttamente
+     * durante l'attraversamento.</p>
      *
      * <p><b>Post-Condition:</b>
      * La mappa e la sua vista delle entry sono vuote.</p>
@@ -610,26 +615,28 @@ public class IteratorTest {
      * rimozione.</p>
      *
      * <p><b>Test Case Design:</b>
-     * La prima chiave restituita viene rimossa e usata come riferimento per
-     * controllare che non ricompaia. Il numero degli elementi successivi
-     * verifica il comportamento concreto dello snapshot senza assumere un
-     * ordine.</p>
+     * Dopo la sequenza {@code next()}-{@code remove()}, il test conta i
+     * risultati successivi e verifica che siano diversi dalla prima chiave
+     * restituita. Non controlla direttamente quali mapping siano rimasti nella
+     * mappa.</p>
      *
      * <p><b>Test Description:</b>
      * Esegue {@code next()} e {@code remove()}, poi consuma il resto
-     * dell'iteratore contando le chiavi e confrontandole con quella eliminata.</p>
+     * dell'iteratore contando le chiavi e confrontandole con la prima chiave
+     * restituita.</p>
      *
      * <p><b>Pre-Condition:</b>
      * La fixture contiene tre mapping; l'unica modifica durante
      * l'attraversamento è quella richiesta allo stesso iteratore.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa contiene i due mapping non rimossi e l'iteratore ha completato
-     * il proprio snapshot.</p>
+     * Il ciclo successivo alla rimozione produce due risultati diversi dalla
+     * prima chiave restituita e la dimensione della mappa vale due. Il test non
+     * controlla direttamente quali mapping siano rimasti.</p>
      *
      * <p><b>Expected Results:</b>
      * Dopo la rimozione vengono restituiti altri due elementi, nessuno dei quali
-     * coincide con la chiave eliminata, e {@code map.size()} vale due.</p>
+     * coincide con la prima chiave restituita, e {@code map.size()} vale due.</p>
      */
     @Test
     public void iteratorContinuesAfterItsOwnRemove() {
@@ -648,8 +655,8 @@ public class IteratorTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica che chiamate ripetute a {@code hasNext()} non consumino
-     * elementi.</p>
+     * Verifica che due chiamate iniziali a {@code hasNext()} non riducano il
+     * numero di risultati prodotti dal ciclo successivo.</p>
      *
      * <p><b>Test Case Design:</b>
      * Prima di iniziare il ciclo, {@code hasNext()} viene invocato due volte.
@@ -665,7 +672,8 @@ public class IteratorTest {
      * primo elemento.</p>
      *
      * <p><b>Post-Condition:</b>
-     * L'iteratore è esaurito e la mappa conserva tutti i mapping iniziali.</p>
+     * L'iteratore è esaurito dopo tre risultati. Il test non esegue mutazioni,
+     * ma non ricontrolla i mapping della fixture.</p>
      *
      * <p><b>Expected Results:</b>
      * Entrambe le interrogazioni iniziali restituiscono {@code true} e il ciclo
@@ -686,29 +694,32 @@ public class IteratorTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica che due iteratori ottenuti dalla stessa vista mantengano stati
-     * di attraversamento indipendenti.</p>
+     * Verifica che l'esaurimento del primo iteratore non riduca il numero di
+     * risultati prodotti dal secondo.</p>
      *
      * <p><b>Test Case Design:</b>
      * I due iteratori vengono creati prima di iniziare le visite e poi consumati
-     * separatamente. Si confrontano soltanto i conteggi, perché ciascuno ha un
-     * proprio cursore e un proprio snapshot ma non è richiesto che esponga un
-     * particolare ordine.</p>
+     * separatamente. Si confrontano soltanto i conteggi: ciò permette di
+     * controllare che esaurire il primo non riduca i risultati disponibili nel
+     * secondo, ma non verifica contenuto o unicità delle chiavi prodotte.</p>
      *
      * <p><b>Test Description:</b>
-     * Crea due iteratori di {@code keySet()}, attraversa completamente prima
-     * l'uno e poi l'altro e registra quanti elementi produce ciascuno.</p>
+     * Crea due iteratori ottenuti da {@code keySet()} della stessa mappa,
+     * attraversa completamente prima l'uno e poi l'altro e registra quanti
+     * elementi produce ciascuno.</p>
      *
      * <p><b>Pre-Condition:</b>
      * La fixture contiene tre mapping e non viene modificata tra la creazione e
      * l'esaurimento dei due iteratori.</p>
      *
      * <p><b>Post-Condition:</b>
-     * Entrambi gli iteratori sono esauriti e la mappa è rimasta invariata.</p>
+     * Entrambi gli iteratori risultano esauriti dopo tre risultati. Il test non
+     * esegue mutazioni, ma non ricontrolla il contenuto della mappa.</p>
      *
      * <p><b>Expected Results:</b>
-     * Ogni iteratore restituisce tre chiavi; l'esaurimento del primo non avanza
-     * né consuma il secondo.</p>
+     * Ogni iteratore produce tre risultati; l'esaurimento del primo non riduce
+     * il conteggio ottenuto dal secondo. Non viene controllato quali chiavi
+     * siano restituite né se siano prive di duplicati.</p>
      */
     @Test
     public void independentIteratorsTraverseAllKeysWhenMapIsUnmodified() {

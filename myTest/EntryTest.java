@@ -18,9 +18,9 @@ import static org.junit.Assert.fail;
  * chiave e del valore, aggiornamento tramite {@code setValue()}, collegamento
  * con la mappa originale, uguaglianza, codice hash e rappresentazione testuale.
  * Viene controllato anche il rifiuto di un valore {@code null}, coerente con il
- * vincolo imposto dalla {@code Hashtable} usata come adaptee. La suite è
- * organizzata concettualmente in quattro categorie espresse dai metodi della
- * classe: lettura e rappresentazione dell'entry, modifica del valore e
+ * vincolo imposto da {@code Hashtable}, che costituisce l'oggetto adattato. I
+ * metodi coprono
+ * lettura e rappresentazione dell'entry, modifica del valore e
  * propagazione alle viste, proprietà di {@code equals()} e {@code hashCode()},
  * comportamento dell'entry già ottenuta quando la mappa viene aggiornata.</p>
  *
@@ -32,8 +32,8 @@ import static org.junit.Assert.fail;
  * sono deterministici. Quando serve un confronto tra oggetti distinti viene
  * usata {@link EntryComp}, un'implementazione indipendente di {@code HMap.Entry}.
  * Il suffisso {@code Comp}, abbreviazione di {@code comparison}, ne evidenzia
- * il ruolo di entry di confronto. Essa permette di
- * rappresentare una coppia attesa senza ottenere una seconda entry dalla mappa.
+ * il ruolo di entry di confronto. Questa classe permette di rappresentare una
+ * coppia attesa senza ottenere una seconda entry dalla mappa.
  * Le asserzioni controllano sia lo stato dell'entry sia, nei test dedicati al
  * collegamento con la mappa, gli effetti osservabili tramite {@code get()},
  * {@code values()} ed {@code entrySet()}. Questa combinazione è stata scelta
@@ -41,8 +41,8 @@ import static org.junit.Assert.fail;
  * aggiornamento del mapping. Il test che legge il valore dopo un
  * {@code map.put()} documenta separatamente la scelta concreta di
  * {@code MapAdapter}, la cui entry consulta la mappa a ogni lettura; tale test
- * non presenta la natura live dell'entry come garanzia generale di
- * {@code HMap.Entry}.</p>
+ * non presenta il collegamento dinamico dell'entry come un comportamento
+ * richiesto in generale da {@code HMap.Entry}.</p>
  *
  * @author Filippo Barban
  * @version 1.1.0
@@ -50,7 +50,7 @@ import static org.junit.Assert.fail;
  * @see HMap.Entry
  */
 public class EntryTest {
-    /** Mappa ricreata prima di ogni test e usata come backing dell'entry. */
+    /** Mappa ricreata prima di ogni test e alla quale l'entry è collegata. */
     private HMap map;
 
     /** Entry associata all'unico mapping {@code a=1} della fixture. */
@@ -89,8 +89,8 @@ public class EntryTest {
      * entry ricavata dalla relativa vista.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa contiene ancora {@code a=1}; nessuna operazione di lettura ha
-     * modificato l'entry o la fixture.</p>
+     * Il test esegue soltanto le due letture; non ricontrolla separatamente il
+     * contenuto della mappa al termine.</p>
      *
      * <p><b>Expected Results:</b>
      * {@code getKey()} restituisce {@code "a"} e {@code getValue()} restituisce
@@ -123,8 +123,8 @@ public class EntryTest {
      * L'entry è collegata all'unico mapping {@code a=1} della fixture.</p>
      *
      * <p><b>Post-Condition:</b>
-     * L'unico mapping della mappa è {@code a=2} e l'entry espone il nuovo
-     * valore.</p>
+     * L'entry espone il nuovo valore {@code "2"}. Il test non legge
+     * direttamente il contenuto della mappa dopo la sostituzione.</p>
      *
      * <p><b>Expected Results:</b>
      * {@code setValue("2")} restituisce {@code "1"} e la successiva
@@ -138,8 +138,8 @@ public class EntryTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica che {@code setValue()} aggiorni il mapping sostenuto dalla mappa
-     * e che l'aggiornamento sia osservabile dalle viste backed.</p>
+     * Verifica che {@code setValue()} aggiorni il mapping memorizzato nella mappa
+     * e che l'aggiornamento sia osservabile dalle viste collegate alla mappa.</p>
      *
      * <p><b>Test Case Design:</b>
      * Il controllo non si limita al riferimento {@code entry}: il valore nuovo
@@ -157,16 +157,17 @@ public class EntryTest {
      * valore {@code "1"} dalla vista dei valori.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * La mappa contiene soltanto {@code a=1}; {@code sameEntry} ed {@code entry}
-     * indicano la stessa entry collegata a tale mapping.</p>
+     * La mappa contiene soltanto {@code a=1} e {@code entry} è collegata a tale
+     * mapping.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa contiene soltanto {@code a=2}; entrambe le viste riflettono il
-     * nuovo valore e non espongono più quello precedente.</p>
+     * {@code get("a")} restituisce {@code "2"}; la vista dei valori contiene
+     * {@code "2"} ma non {@code "1"}, mentre la vista delle entry contiene
+     * {@code a=2}. Il test non ricontrolla la dimensione della mappa.</p>
      *
      * <p><b>Expected Results:</b>
      * {@code get("a")} restituisce {@code "2"}, {@code values()} contiene
-     * {@code "2"} ma non {@code "1"}, ed {@code entrySet()} contiene una entry
+     * {@code "2"} ma non {@code "1"}, ed {@code entrySet()} contiene un'entry
      * equivalente a {@code a=2}.</p>
      */
     @Test
@@ -186,8 +187,9 @@ public class EntryTest {
      *
      * <p><b>Test Case Design:</b>
      * Il caso usa un mapping già presente anziché un oggetto isolato: dopo il
-     * tentativo è così possibile verificare sia il tipo dell'eccezione sia
-     * l'atomicità osservabile dell'operazione. Il controllo è rilevante perché
+     * tentativo è così possibile verificare il tipo dell'eccezione e controllare
+     * che {@code map.get("a")} restituisca ancora {@code "1"}. Il controllo è
+     * rilevante perché
      * {@code MapAdapter} delega l'aggiornamento alla {@code Hashtable}, che non
      * accetta valori {@code null}.</p>
      *
@@ -202,8 +204,8 @@ public class EntryTest {
      * è ancora collegata a esso.</p>
      *
      * <p><b>Post-Condition:</b>
-     * Il tentativo di aggiornamento non ha effetto: la mappa e l'entry
-     * rappresentano ancora {@code a=1}.</p>
+     * Dopo l'eccezione {@code map.get("a")} restituisce ancora {@code "1"}.
+     * Il test non richiama {@code entry.getValue()}.</p>
      *
      * <p><b>Expected Results:</b>
      * {@code setValue(null)} solleva {@link NullPointerException}; nel relativo
@@ -239,11 +241,12 @@ public class EntryTest {
      * confronta i codici restituiti dai due {@code hashCode()}.</p>
      *
      * <p><b>Pre-Condition:</b>
-     * {@code entry} e {@code other} sono istanze distinte che rappresentano
-     * entrambe {@code a=1}.</p>
+     * La fixture contiene il mapping {@code a=1} e {@code entry} è collegata a
+     * tale mapping.</p>
      *
      * <p><b>Post-Condition:</b>
-     * Le due entry e il mapping della fixture restano invariati.</p>
+     * Dopo la preparazione il test esegue soltanto confronti; non ricontrolla
+     * separatamente il mapping della fixture.</p>
      *
      * <p><b>Expected Results:</b>
      * Entrambi i confronti di uguaglianza restituiscono {@code true} e i due
@@ -264,8 +267,7 @@ public class EntryTest {
      * <p><b>Test Case Design:</b>
      * Il confronto usa esattamente lo stesso riferimento per isolare la
      * riflessività dalle verifiche su chiave, valore e classe concreta svolte
-     * dagli altri test. Il caso è mantenuto autonomo perché una regressione nel
-     * ramo iniziale di {@code equals()} deve essere localizzata immediatamente.</p>
+     * dagli altri test.</p>
      *
      * <p><b>Test Description:</b>
      * Invoca {@code entry.equals(entry)} usando l'entry preparata dalla fixture
@@ -276,7 +278,8 @@ public class EntryTest {
      * {@code entry} è un riferimento non nullo al mapping {@code a=1}.</p>
      *
      * <p><b>Post-Condition:</b>
-     * L'entry e il mapping {@code a=1} restano invariati.</p>
+     * Il test esegue soltanto il confronto riflessivo; non ricontrolla il
+     * mapping della fixture al termine.</p>
      *
      * <p><b>Expected Results:</b>
      * {@code entry.equals(entry)} restituisce {@code true}.</p>
@@ -294,8 +297,8 @@ public class EntryTest {
      * <p><b>Test Case Design:</b>
      * I quattro dati separano altrettante cause di disuguaglianza: l'entry di
      * confronto {@code b=1} cambia soltanto la chiave, mentre l'entry
-     * {@code a=2} cambia soltanto il valore; {@code null} verifica il confine
-     * nullo e la stringa
+     * {@code a=2} cambia soltanto il valore; {@code null} copre il caso di un
+     * argomento nullo e la stringa
      * {@code "a=1"} ha la stessa forma testuale ma un tipo non valido. Cambiare
      * una sola caratteristica alla volta consente di attribuire con precisione
      * un eventuale fallimento al controllo corrispondente.</p>
@@ -310,8 +313,8 @@ public class EntryTest {
      * L'entry della fixture rappresenta {@code a=1} e non è stata modificata.</p>
      *
      * <p><b>Post-Condition:</b>
-     * L'entry e il mapping originale restano {@code a=1}; i confronti non
-     * producono effetti laterali.</p>
+     * Il test esegue soltanto confronti; non ricontrolla l'entry o il mapping
+     * originale al termine.</p>
      *
      * <p><b>Expected Results:</b>
      * Tutti e quattro i confronti restituiscono {@code false}.</p>
@@ -326,7 +329,7 @@ public class EntryTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica la formula del codice hash prevista per una entry.</p>
+     * Verifica la formula del codice hash prevista per un'entry.</p>
      *
      * <p><b>Test Case Design:</b>
      * Le stringhe note {@code "a"} e {@code "1"} consentono di costruire
@@ -338,18 +341,19 @@ public class EntryTest {
      * <p><b>Test Description:</b>
      * Calcola dapprima {@code "a".hashCode() ^ "1".hashCode()} e memorizza il
      * risultato. Lo confronta poi con {@code entry.hashCode()}; infine costruisce
-     * implicitamente un'entry di confronto {@code a=1} e confronta il relativo
+     * direttamente un'entry di confronto {@code a=1} e confronta il relativo
      * hash con quello dell'entry della mappa.</p>
      *
      * <p><b>Pre-Condition:</b>
      * L'entry della fixture rappresenta il mapping non modificato {@code a=1}.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa e l'entry restano invariate; il calcolo non modifica alcun dato.</p>
+     * Il test esegue soltanto calcoli e confronti; non ricontrolla il contenuto
+     * della mappa al termine.</p>
      *
      * <p><b>Expected Results:</b>
-     * L'hash dell'entry coincide sia con lo XOR calcolato sia con l'hash dello
-     * oggetto di confronto equivalente.</p>
+     * L'hash dell'entry coincide sia con lo XOR calcolato sia con l'hash
+     * dell'oggetto di confronto equivalente.</p>
      */
     @Test
     public void hashCodeIsKeyHashXorValueHash() {
@@ -381,8 +385,9 @@ public class EntryTest {
      * La mappa contiene {@code a=1} e l'entry è collegata a tale mapping.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa, l'entry e l'oggetto di confronto indipendente rappresentano la
-     * stessa coppia {@code a=updated}.</p>
+     * L'entry e l'oggetto di confronto rappresentano la coppia
+     * {@code a=updated}. Il test non legge direttamente la mappa dopo
+     * {@code setValue()}.</p>
      *
      * <p><b>Expected Results:</b>
      * Il nuovo hash coincide con la formula attesa, l'entry è uguale all'oggetto
@@ -406,8 +411,9 @@ public class EntryTest {
      * <p><b>Test Case Design:</b>
      * La rappresentazione viene osservata sia nello stato iniziale sia dopo
      * {@code setValue("2")}. Il doppio controllo è stato scelto per verificare
-     * contemporaneamente il separatore {@code =}, l'ordine chiave-valore e
-     * l'assenza di una copia testuale obsoleta del valore.</p>
+     * contemporaneamente il separatore {@code =}, l'ordine chiave-valore e il
+     * fatto che la seconda stringa usi il valore aggiornato, non quello
+     * iniziale.</p>
      *
      * <p><b>Test Description:</b>
      * Prima invoca {@code toString()} su {@code a=1} e confronta la stringa con
@@ -418,8 +424,8 @@ public class EntryTest {
      * L'entry rappresenta inizialmente l'unico mapping {@code a=1}.</p>
      *
      * <p><b>Post-Condition:</b>
-     * Il mapping sostenuto dalla mappa è {@code a=2} e l'entry espone tale
-     * valore anche nella rappresentazione testuale.</p>
+     * L'entry espone {@code a=2} nella rappresentazione testuale. Il test non
+     * legge direttamente il mapping dalla mappa dopo {@code setValue()}.</p>
      *
      * <p><b>Expected Results:</b>
      * Le due chiamate a {@code toString()} restituiscono rispettivamente
@@ -434,7 +440,7 @@ public class EntryTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica che una entry già ottenuta da {@link MapAdapter} legga il valore
+     * Verifica che un'entry già ottenuta da {@link MapAdapter} legga il valore
      * sostituito successivamente attraverso la mappa.</p>
      *
      * <p><b>Test Case Design:</b>
@@ -458,12 +464,14 @@ public class EntryTest {
      * {@code a=1} e non è stata rimossa dalla relativa vista.</p>
      *
      * <p><b>Post-Condition:</b>
-     * La mappa contiene {@code a=updated}; il riferimento a {@code entry} è lo
-     * stesso creato nella fixture e osserva il valore corrente.</p>
+     * Dopo {@code map.put("a", "updated")}, il riferimento a {@code entry}
+     * creato nella fixture espone il valore {@code "updated"}.</p>
      *
      * <p><b>Expected Results:</b>
-     * {@code getValue()} restituisce {@code "updated"} e l'entry di confronto
-     * indipendente {@code a=updated} risulta uguale all'entry conservata.</p>
+     * {@code getValue()} restituisce {@code "updated"}. Inoltre
+     * {@code EntryComp.equals(entry)} restituisce {@code true}; questa seconda
+     * asserzione controlla il confronto eseguito dall'oggetto atteso, non
+     * costituisce una verifica separata di {@code MapEntry.equals()}.</p>
      */
     @Test
     public void entryReadsCurrentValueAfterMapReplacement() {
@@ -477,13 +485,14 @@ public class EntryTest {
      * {@link HMap.Entry}. Il suffisso {@code Comp}, abbreviazione di
      * {@code comparison}, evidenzia che la classe serve a rappresentare una coppia
      * chiave-valore attesa e a confrontarla con le entry prodotte dalla mappa.
-     * La chiave resta fissa, mentre il valore può essere sostituito localmente;
-     * l'oggetto non è collegato a una {@link MapAdapter}. Questa indipendenza
+     * Il riferimento alla chiave non viene sostituito, mentre il valore può
+     * essere aggiornato localmente; l'oggetto non è collegato a una
+     * {@link MapAdapter}. Questa indipendenza
      * evita che il risultato atteso sia costruito mediante la stessa
      * implementazione sottoposta al test.
      */
     private static final class EntryComp implements HMap.Entry {
-        /** Chiave immutabile del mapping rappresentato per il confronto. */
+        /** Riferimento alla chiave, assegnato nel costruttore e non sostituito. */
         private final Object key;
 
         /** Valore corrente del mapping rappresentato per il confronto. */
@@ -503,7 +512,7 @@ public class EntryTest {
         /**
          * Restituisce la chiave dell'entry di confronto.
          *
-         * @return chiave immutabile del mapping
+         * @return riferimento alla chiave del mapping
          */
         public Object getKey() {
             return key;
@@ -531,9 +540,9 @@ public class EntryTest {
         }
 
         /**
-         * Confronta questa entry con un'altra entry in base a chiave e valore.
+         * Confronta quest'entry con un'altra entry in base a chiave e valore.
          *
-         * @param object oggetto da confrontare con questa entry di confronto
+         * @param object oggetto da confrontare con quest'entry di confronto
          * @return {@code true} se l'oggetto è una {@code HMap.Entry} con la
          *         stessa chiave e lo stesso valore, {@code false} altrimenti
          */
