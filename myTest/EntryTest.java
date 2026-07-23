@@ -28,8 +28,8 @@ import static org.junit.Assert.fail;
  *
  * <p>
  * <b>Test Case Design:</b>
- * Ogni test usa una nuova {@link MapAdapter} contenente il solo mapping
- * ({@code a=1}). La presenza di una sola coppia rende univoca l'entry ottenuta
+ * Ogni test usa una nuova {@link MapAdapter} contenente la sola associazione
+ * {@code a=1}. La presenza di una sola coppia rende univoca l'entry ottenuta
  * dall'iteratore e permette di non fare assunzioni sull'ordine della
  * {@code Hashtable}. I valori sono stringhe semplici, così uguaglianza e hash
  * sono deterministici. Quando serve un confronto tra oggetti distinti viene
@@ -434,8 +434,8 @@ public class EntryTest {
      * <p>
      * <b>Test Case Design:</b>
      * Le stringhe note {@code "a"} e {@code "1"} consentono di costruire
-     * indipendentemente il risultato atteso mediante XOR(operatore ^). La prima
-     * asserzione
+     * indipendentemente il risultato atteso mediante l'operatore XOR ({@code ^}).
+     * La prima asserzione
      * verifica direttamente la formula; la seconda usa un {@link EntryComp}
      * equivalente per controllare che due implementazioni dello stesso mapping
      * producano un hash coerente.
@@ -587,7 +587,7 @@ public class EntryTest {
      * {@code map.put()} sostituisce il valore della sua chiave. Il test è stato
      * scelto per documentare la natura live della classe interna usata da
      * {@code MapAdapter}, il cui {@code getValue()} consulta la
-     * {@code Hashtable} corrente. Si tratta di una scelta 
+     * {@code Hashtable} corrente. Si tratta di una scelta
      * dell'adapter e non di una garanzia generale attribuita a ogni
      * {@link HMap.Entry} dopo una modifica diretta della mappa.
      * </p>
