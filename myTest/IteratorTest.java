@@ -24,14 +24,13 @@ import static org.junit.Assert.fail;
  * {@code entrySet()}, compresa la conservazione dei valori duplicati e
  * l'effetto di {@link HIterator#remove()} sulla mappa sottostante alle viste.
  * Vengono inoltre verificate {@link NoSuchElementException} e l'eccezione
- * locale {@link MapAdapter.HIllegalStateException} prevista dal progetto per
+ * {@link MapAdapter.HIllegalStateException} prevista dal progetto per
  * gli stati in cui {@code remove()} non è consentito. I test riguardano
- * l'attraversamento delle tre viste e la gestione dei duplicati, i limiti di
- * {@code next()} e la natura non distruttiva di {@code hasNext()}, stati legali
- * e
- * illegali di {@code remove()}, continuità e indipendenza degli iteratori
+ * l'attraversamento delle tre viste, la gestione dei
+ * valori duplicati, i limiti di {@code next()}, il fatto che
+ * {@code hasNext()} non faccia avanzare l'iteratore, gli utilizzi consentiti
+ * e non consentiti di {@code remove()} e l'indipendenza degli iteratori
  * realizzati da {@code MapAdapter}.
- * </p>
  *
  * <p>
  * <b>Test Case Design:</b>
@@ -50,9 +49,7 @@ import static org.junit.Assert.fail;
  * iteratore conserva una copia iniziale delle chiavi, mantiene una propria
  * posizione e consulta la mappa originale per ottenere valori ed entry o per
  * eseguire {@code remove()}. In questa classe la mappa non viene modificata
- * direttamente mentre un iteratore è in uso. Non sono introdotte modifiche
- * strutturali esterne durante
- * l'iterazione e non è presente un comportamento fail-fast.
+ * direttamente mentre un iteratore è in uso.
  * </p>
  *
  * @author Filippo Barban
@@ -425,7 +422,7 @@ public class IteratorTest {
      * <p>
      * <b>Test Case Design:</b>
      * Il metodo di rimozione viene invocato appena creato l'iteratore, quando
-     * non esiste ancora un ultimo elemento restituito.Controlla anche la
+     * non esiste ancora un ultimo elemento restituito. il test Controlla anche la
      * dimensione per escludere una rimozione accidentale.
      * </p>
      *
@@ -522,7 +519,7 @@ public class IteratorTest {
      * <b>Test Case Design:</b>
      * Tra {@code next()} e {@code remove()} viene inserita soltanto una
      * chiamata a {@code hasNext()}. Il caso controlla che questa chiamata non
-     * renda illegale la rimozione;Il fatto che {@code hasNext()} non faccia
+     * renda illegale la rimozione; il fatto che {@code hasNext()} non faccia
      * avanzare
      * l'iteratore viene verificato separatamente in
      * {@link #repeatedHasNextDoesNotConsumeElements()}.
@@ -597,7 +594,7 @@ public class IteratorTest {
      *
      * <p>
      * <b>Expected Results:</b>
-     * Il tentativo lancial'ecezzione {@code NoSuchElementException}, ma non
+     * Il tentativo lancia l'eccezione {@code NoSuchElementException}, ma non
      * rende illegale la successiva rimozione dell'ultimo risultato valido.
      * </p>
      */
@@ -695,7 +692,7 @@ public class IteratorTest {
      *
      * <p>
      * <b>Test Description:</b>
-     * Usa l'iteratore dei valori, rimuove la pirima coppia restituito e tenta
+     * Usa l'iteratore dei valori, rimuove la prima coppia restituita e tenta
      * immediatamente una seconda chiamata a {@code remove()}.
      * </p>
      *
@@ -766,7 +763,7 @@ public class IteratorTest {
      * <b>Expected Results:</b>
      * Il contatore vale tre, {@code map.isEmpty()} restituisce {@code true} e
      * anche {@code map.entrySet().isEmpty()} restituisce {@code true}. Il
-     * risultato conferma che l'iteratore può contuinuare lo dopo aver rimosso gli
+     * risultato conferma che l'iteratore può contuinuare dopo aver rimosso gli
      * elementi restituiti con {@code remove()}.
      * </p>
      */
@@ -843,7 +840,7 @@ public class IteratorTest {
      * <p>
      * <b>Summary:</b>
      * Verifica che due chiamate iniziali a {@code hasNext()} prima di iniziare
-     * l'iterazione non faccia avanzare l'iteratore. Il ciclo successivo deve
+     * l'iterazione non facciano avanzare l'iteratore. Il ciclo successivo deve
      * quindi restituire tutti gli elementi presenti.
      * </p>
      *
@@ -856,13 +853,15 @@ public class IteratorTest {
      *
      * <p>
      * <b>Test Description:</b>
-     * Interroga due volte l'iteratore delle chiavi e successivamente lo scorre fino alla fine 
+     * Interroga due volte l'iteratore delle chiavi e successivamente lo scorre fino
+     * alla fine
      * con una normale sequenza {@code hasNext()}-{@code next()}.
      * </p>
      *
      * <p>
      * <b>Pre-Condition:</b>
-     * La configurazione inizale della mappa contiene tre coppie e l'iteratore è posizionato prima del
+     * La configurazione iniziale della mappa contiene tre coppie e l'iteratore è
+     * posizionato prima del
      * primo elemento.
      * </p>
      *
@@ -899,7 +898,7 @@ public class IteratorTest {
      *
      * <p>
      * <b>Test Case Design:</b>
-     * I due iteratori vengono creati prima di iniziare le visite e poi consumati
+     * I due iteratori vengono creati prima di iniziare le visite e poi percorsi
      * separatamente. Si confrontano soltanto i conteggi: ciò permette di
      * controllare che esaurire il primo non riduca i risultati disponibili nel
      * secondo, non verifica contenuto o unicità delle chiavi prodotte.
@@ -914,7 +913,8 @@ public class IteratorTest {
      *
      * <p>
      * <b>Pre-Condition:</b>
-     * La mappa iniziale contiene tre coppie e non viene modificata tra la creazione e
+     * La mappa iniziale contiene tre coppie e non viene modificata tra la creazione
+     * e
      * l'esaurimento dei due iteratori.
      * </p>
      *
@@ -926,7 +926,8 @@ public class IteratorTest {
      *
      * <p>
      * <b>Expected Results:</b>
-     * Ogni iteratore produce tre risultati; lo scorrimento fino alla fine del primo iteratore non riduce
+     * Ogni iteratore produce tre risultati; lo scorrimento fino alla fine del primo
+     * iteratore non riduce
      * il conteggio ottenuto dal secondo. Non viene controllato quali chiavi
      * siano restituite né se siano prive di duplicati.
      * </p>
