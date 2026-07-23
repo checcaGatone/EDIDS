@@ -22,9 +22,9 @@ import org.junit.runner.notification.Failure;
  * <p><b>Composizione della suite:</b>
  * Le classi sono passate esplicitamente a {@link JUnitCore#runClasses(Class...)}
  * per rendere verificabile la suddivisione richiesta dalla consegna. La suite
- * comprende i 29 test di {@link MapAdapterTest}, i 51 test di {@link ViewsTest},
+ * comprende i 28 test di {@link MapAdapterTest}, i 50 test di {@link ViewsTest},
  * i 16 test di {@link IteratorTest} e gli 11 test di {@link EntryTest}, per un
- * totale attuale di 107 metodi di test. L'ordine dell'elenco stabilisce soltanto
+ * totale attuale di 105 metodi di test. L'ordine dell'elenco stabilisce soltanto
  * la composizione del run e non crea dipendenze tra le fixture delle classi.</p>
  *
  * <p><b>Output prodotto:</b>

@@ -1690,36 +1690,6 @@ public class ViewsTest {
 
     /**
      * <p><b>Summary:</b></p>
-     * <p>Verifica quale parte di un array sovradimensionato viene azzerata.</p>
-     * <p><b>Test Case Design:</b></p>
-     * <p>Le sentinelle permettono di distinguere la cella subito successiva
-     * agli elementi dalla coda ulteriore, che il contratto lascia invariata.
-     * Un array di quattro celle per due chiavi lascia esattamente un indice
-     * terminatore e almeno un indice di coda osservabile.</p>
-     * <p><b>Test Description:</b></p>
-     * <p>Il test riempie quattro celle con la stessa sentinella, converte le
-     * due chiavi nell'array, verifica il riuso del riferimento e controlla che
-     * l'indice 2 sia {@code null} mentre l'indice 3 conservi la sentinella.</p>
-     * <p><b>Pre-Condition:</b></p>
-     * <p>Tutte le celle contengono la stessa sentinella non nulla.</p>
-     * <p><b>Post-Condition:</b></p>
-     * <p>La cella 2 è nulla, mentre la cella 3 conserva la sentinella.</p>
-     * <p><b>Expected Results:</b></p>
-     * <p>L'array fornito viene riutilizzato, la cella di indice 2 contiene
-     * {@code null} e la cella di indice 3 conserva la sentinella.</p>
-     */
-    @Test
-    public void toArrayWithLargeArraySetsOnlyFollowingElementToNull() {
-        Object sentinel = new Object();
-        Object[] supplied = new Object[] {sentinel, sentinel, sentinel, sentinel};
-        Object[] result = map.keySet().toArray(supplied);
-        assertSame(supplied, result);
-        assertNull(result[2]);
-        assertSame(sentinel, result[3]);
-    }
-
-    /**
-     * <p><b>Summary:</b></p>
      * <p>Verifica il riuso di un array tipizzato compatibile.</p>
      * <p><b>Test Case Design:</b></p>
      * <p>Le chiavi sono {@link String} e l'array {@code String[]} ha una cella

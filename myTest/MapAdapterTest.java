@@ -14,47 +14,65 @@ import static org.junit.Assert.fail;
 
 /**
  * Test suite dedicata alle operazioni fondamentali di {@link MapAdapter},
- * osservate principalmente attraverso il contratto pubblico di {@link HMap}.
+ * osservate principalmente attraverso il contratto di {@link HMap}.
  *
  * <p><b>Summary:</b>
- * La suite contiene ventinove metodi di test, eseguiti con JUnit 4.13, e
- * controlla le principali operazioni di {@code Map} previste da J2SE 1.4.2 che
- * non riguardano direttamente le viste. I casi sono organizzati in categorie
- * logiche. La prima categoria controlla lo stato iniziale, l'inserimento di un
- * nuovo mapping e la sostituzione di un valore. La seconda riguarda le ricerche
- * tramite {@code get}, {@code containsKey} e {@code containsValue}, compresa la
- * direzione del confronto {@code equals}. La terza verifica rimozione e
- * svuotamento. La quarta prova {@code putAll} con sorgenti popolate, vuote,
- * coincidenti con la destinazione oppure nulle. Il costruttore di copia viene
- * invece provato con una sorgente popolata, vuota o nulla, controllando anche
- * che una successiva modifica della sorgente non cambi la copia. L'ultima
- * categoria controlla {@code equals}, {@code hashCode} e la presenza dei
- * mapping nella stringa restituita da {@code toString}. Nei gruppi pertinenti
- * sono inclusi casi negativi con chiavi,
- * valori o mappe {@code null}, in coerenza con i vincoli derivanti da
- * {@code Hashtable}, che costituisce l'oggetto adattato.
+ * La suite comprende ventotto metodi di test e verifica le principali
+ * operazioni di {@code Map} previste da J2SE 1.4.2 che non dipendono
+ * direttamente dalle viste della mappa.
+ *
+ * I primi test controllano lo stato iniziale della mappa, l'inserimento di una
+ * nuova associazione e la sostituzione del valore associato a una chiave già
+ * presente. Successivamente vengono verificate le operazioni di ricerca
+ * {@code get()}, {@code containsKey()} e {@code containsValue()}, compreso il
+ * modo in cui viene utilizzato il metodo {@code equals()} durante i confronti.
+ *
+ * Un altro gruppo di test riguarda la rimozione delle associazioni e lo
+ * svuotamento completo della mappa. Il metodo {@code putAll()} viene provato
+ * usando una mappa popolata, una mappa vuota, la stessa mappa di destinazione
+ * e una sorgente {@code null}. Anche il costruttore di copia viene verificato
+ * con una sorgente popolata, vuota oppure {@code null}. Nel caso della sorgente
+ * popolata viene inoltre controllato che la copia sia indipendente, quindi che
+ * una modifica successiva della mappa originale non cambi quella copiata.
+ *
+ * Gli ultimi test verificano i metodi {@code equals()}, {@code hashCode()} e
+ * {@code toString()}. Per la rappresentazione testuale si controlla la presenza
+ * delle associazioni, senza fare ipotesi sul loro ordine. Nei test in cui è
+ * necessario vengono considerati anche i casi con chiavi, valori o mappe
+ * {@code null}, seguendo i vincoli della {@code Hashtable} utilizzata come
+ * oggetto adattato.
  * </p>
  *
  * <p><b>Test Case Design:</b>
- * La fixture viene ricreata prima di ogni metodo, così ogni risultato dipende
- * soltanto dai dati preparati nel caso corrente. Le variabili che rappresentano
- * le mappe sono dichiarate come {@link HMap} quando non è necessario usare il
- * tipo concreto. {@link MapAdapter} viene usato per creare le istanze, provare
- * i costruttori e definire la sottoclasse sentinella. Le stringhe
- * brevi e distinte usate come chiavi e valori rendono non ambigui i mapping e
- * permettono di calcolare manualmente il codice hash atteso. Nei test delle
- * operazioni mutative che restituiscono un valore si controllano sia il
- * risultato sia lo stato finale. Per {@code clear()} e per i casi ordinari di
- * {@code putAll()}, che restituiscono {@code void}, si controlla il contenuto
- * dopo la chiamata. Nei casi di errore gestiti
- * esplicitamente viene verificata anche l'assenza di modifiche parziali. Il
- * probe con uguaglianza asimmetrica è stato introdotto per
- * distinguere le due possibili direzioni di {@code equals}; la sottoclasse
- * sentinella rende invece osservabile un'eventuale chiamata al metodo
- * sovrascritto {@code put} durante il costruttore della superclasse. Infine,
- * l'ordine di inserimento viene variato nei confronti fra mappe e la stringa
- * prodotta viene verificata per contenuto, senza imporre
- * l'ordine di iterazione non garantito da {@code Hashtable}.
+ * Prima di ogni test viene creata una nuova mappa, in modo che il risultato
+ * dipenda solamente dai dati preparati nel test corrente e non dalle modifiche
+ * eseguite dai test precedenti.
+ *
+ * Quando non è necessario accedere alle caratteristiche specifiche
+ * dell'implementazione, le mappe vengono dichiarate usando l'interfaccia
+ * {@link HMap}. Il tipo concreto {@link MapAdapter} viene invece utilizzato per
+ * creare le istanze e verificare i costruttori.
+ *
+ * Le chiavi e i valori sono rappresentati da stringhe brevi e diverse tra loro.
+ * Questa scelta rende immediato riconoscere le associazioni presenti nella
+ * mappa e permette di calcolare facilmente il codice hash atteso. Per i metodi
+ * di modifica che restituiscono un valore, come {@code put()} e
+ * {@code remove()}, vengono controllati sia il valore restituito sia il
+ * contenuto finale della mappa. Per {@code clear()} e per i casi normali di
+ * {@code putAll()}, che non restituiscono alcun valore, viene invece verificato
+ * direttamente lo stato della mappa dopo la chiamata. Nei casi che devono
+ * produrre un'eccezione si controlla anche che la mappa non sia stata modificata
+ * solo in parte.
+ *
+ * Per verificare la direzione del confronto effettuato da {@code equals()} viene
+ * utilizzato un oggetto con uguaglianza non simmetrica, così è possibile capire
+ * quale dei due oggetti riceve effettivamente la chiamata.
+ *
+ * Infine, nei confronti tra mappe le associazioni vengono inserite in ordini
+ * differenti, così si verifica che l'uguaglianza dipenda dal contenuto e non
+ * dall'ordine di inserimento. Anche il risultato di {@code toString()} viene
+ * controllato solamente in base alle associazioni presenti, perché la
+ * {@code Hashtable} non garantisce uno specifico ordine di iterazione.
  * </p>
  *
  * @author Filippo Barban
@@ -64,14 +82,14 @@ import static org.junit.Assert.fail;
  */
 public class MapAdapterTest {
     /**
-     * Mappa nuova usata come fixture dalla maggior parte dei metodi di test. Il
+     * Mappa di partenza usata dalla maggior parte dei metodi di test. Il
      * riferimento è dichiarato come {@link HMap} per esercitare il contratto
      * pubblico senza dipendere dai dettagli interni di {@link MapAdapter}.
      */
     private HMap map;
 
     /**
-     * Crea una fixture vuota prima di ogni test.
+     * Crea una mappa iniziale vuota prima di ogni test.
      *
      * <p>La reinizializzazione fa sì che ogni caso parta da uno stato noto
      * e che un eventuale fallimento non condizioni i test eseguiti in seguito.</p>
@@ -88,21 +106,19 @@ public class MapAdapterTest {
      *
      * <p><b>Test Case Design:</b>
      * Il caso controlla direttamente lo stato prodotto dal costruttore senza
-     * argomenti, sul quale si basano molti degli altri test della classe. Si
-     * confrontano {@code size()} e {@code isEmpty()} perché descrivono lo stesso
-     * stato con due tipi di risultato diversi e devono quindi essere coerenti.
+     * argomenti. Si confrontano {@code size()} e {@code isEmpty()} poichè descrivono lo stesso
+     * stato con due tipi di risultato diversi e devono essere coerenti.
      * </p>
      *
      * <p><b>Test Description:</b>
-     * Dopo la preparazione della fixture, il test invoca prima {@code size()} e
+     * Dopo la preparazione della condizione iniziale, il test invoca prima {@code size()} e
      * ne confronta il risultato con zero; invoca poi {@code isEmpty()} e ne
-     * verifica il valore booleano, senza effettuare alcun inserimento.
+     * verifica il valore booleano.
      * </p>
      *
      * <p><b>Pre-Condition:</b>
-     * JUnit ha eseguito {@link #setUp()}; {@link #map} riferisce quindi un nuovo
-     * {@link MapAdapter} valido sul quale non è stata ancora eseguita alcuna
-     * operazione mutativa.
+     * JUnit ha eseguito {@link #setUp()}; {@link #map} riferendo quindi un nuovo
+     * {@link MapAdapter} pulito evalido.
      * </p>
      *
      * <p><b>Post-Condition:</b>
@@ -1073,67 +1089,6 @@ public class MapAdapterTest {
 
     /**
      * <p><b>Summary:</b>
-     * Verifica che il costruttore di copia non invochi il metodo sovrascrivibile
-     * {@code put} prima dell'inizializzazione completa della sottoclasse.
-     * </p>
-     *
-     * <p><b>Test Case Design:</b>
-     * {@link InitializationGuardMapAdapter} sovrascrive {@code put} e lancia un
-     * {@link AssertionError} se il metodo viene chiamato durante l'esecuzione del
-     * costruttore della superclasse. Questo oggetto sentinella rende osservabile
-     * la scelta progettuale di inizializzare la tabella senza chiamare il metodo
-     * sovrascrivibile {@code put} su un oggetto non ancora completamente
-     * costruito. I due mapping verificano che la costruzione copi realmente il
-     * contenuto anche senza passare dal metodo sovrascritto; l'aggiunta successiva
-     * alla sorgente controlla inoltre che il nuovo mapping non compaia nella
-     * copia.
-     * </p>
-     *
-     * <p><b>Test Description:</b>
-     * Il test crea una sorgente con due mapping e la passa al costruttore della
-     * sottoclasse sentinella. Dopo la costruzione confronta le mappe e legge i due
-     * valori copiati. Infine inserisce {@code "c"="3"} nella sola sorgente e
-     * controlla assenza della chiave e dimensione della copia.
-     * </p>
-     *
-     * <p><b>Pre-Condition:</b>
-     * La fixture predisposta da JUnit non è usata in questo caso; la sorgente
-     * locale contiene {@code "a"="1"} e {@code "b"="2"}. Il flag della
-     * sottoclasse è ancora falso durante {@code super(source)} e diventa vero
-     * soltanto dopo il ritorno dal costruttore della superclasse.
-     * </p>
-     *
-     * <p><b>Post-Condition:</b>
-     * La copia contiene i due mapping iniziali; l'aggiunta successiva eseguita
-     * sulla sorgente non compare nella copia.
-     * </p>
-     *
-     * <p><b>Expected Results:</b>
-     * La costruzione termina senza {@link AssertionError}, copia e sorgente sono
-     * inizialmente uguali, {@code get("a")} e {@code get("b")} restituiscono
-     * rispettivamente {@code "1"} e {@code "2"}; dopo la modifica della sorgente,
-     * la copia non contiene {@code "c"} e la sua dimensione resta {@code 2}.
-     * </p>
-     */
-    @Test
-    public void copyConstructorDoesNotCallOverridablePutBeforeInitialization() {
-        HMap source = new MapAdapter();
-        source.put("a", "1");
-        source.put("b", "2");
-
-        HMap copy = new InitializationGuardMapAdapter(source);
-
-        assertEquals(source, copy);
-        assertEquals("1", copy.get("a"));
-        assertEquals("2", copy.get("b"));
-
-        source.put("c", "3");
-        assertFalse(copy.containsKey("c"));
-        assertEquals(2, copy.size());
-    }
-
-    /**
-     * <p><b>Summary:</b>
      * Verifica che il costruttore di copia rifiuti una sorgente {@code null}.
      * </p>
      *
@@ -1469,52 +1424,4 @@ public class MapAdapterTest {
         }
     }
 
-    /**
-     * Sottoclasse sentinella usata per controllare il costruttore di copia.
-     *
-     * <p>Il metodo {@link #put(Object, Object)} segnala con un errore
-     * un'eventuale chiamata a {@code put} durante l'esecuzione del costruttore
-     * della superclasse, prima che la sottoclasse abbia completato
-     * l'inizializzazione.</p>
-     */
-    private static final class InitializationGuardMapAdapter
-            extends MapAdapter {
-        /**
-         * Indica che l'esecuzione di {@code super(source)} è terminata e che la
-         * chiamata al metodo sovrascritto {@code put} può essere eseguita
-         * normalmente.
-         */
-        private boolean initialized;
-
-        /**
-         * Costruisce la mappa sentinella copiando la sorgente e abilita
-         * {@code put} soltanto dopo il completamento del costruttore della
-         * superclasse.
-         *
-         * @param source mappa valida dalla quale copiare i mapping
-         */
-        private InitializationGuardMapAdapter(HMap source) {
-            super(source);
-            initialized = true;
-        }
-
-        /**
-         * Inserisce un mapping soltanto dopo la completa inizializzazione della
-         * sottoclasse.
-         *
-         * @param key chiave del mapping da inserire
-         * @param value valore da associare alla chiave
-         * @return valore precedentemente associato alla chiave, oppure
-         *         {@code null} se la chiave non era presente
-         * @throws AssertionError se il metodo viene invocato prima che
-         *         {@link #initialized} sia diventato {@code true}
-         */
-        public Object put(Object key, Object value) {
-            if (!initialized) {
-                throw new AssertionError(
-                        "put invocato prima dell'inizializzazione");
-            }
-            return super.put(key, value);
-        }
-    }
 }

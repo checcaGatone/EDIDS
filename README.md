@@ -384,11 +384,11 @@ java -cp "build:JUnit/junit-4.13.jar:JUnit/hamcrest-core-1.3.jar" \
 
 ### Output atteso
 
-Nel corrente stato del progetto il runner esegue 107 test:
+Nel corrente stato del progetto il runner esegue 105 test:
 
 ```text
-Test eseguiti: 107
-Test superati: 107
+Test eseguiti: 105
+Test superati: 105
 Test falliti: 0
 Test ignorati: 0
 Tempo impiegato: <tempo variabile> ms
@@ -410,11 +410,11 @@ comprende quattro test case:
 
 | Test case | Test | Responsabilità principale |
 | --- | ---: | --- |
-| `MapAdapterTest` | 29 | costruttori, operazioni `HMap`, `null`, copia, uguaglianza, hash e `containsValue` |
-| `ViewsTest` | 51 | backing, operazioni bulk, uguaglianza degli insiemi, array e operazioni opzionali |
+| `MapAdapterTest` | 28 | costruttori, operazioni `HMap`, `null`, copia, uguaglianza, hash e `containsValue` |
+| `ViewsTest` | 50 | backing, operazioni bulk, uguaglianza degli insiemi, array e operazioni opzionali |
 | `IteratorTest` | 16 | attraversamento, duplicati, esaurimento e `remove()` |
 | `EntryTest` | 11 | backing delle entry, `setValue`, uguaglianza, hash e stringa |
-| **Totale** | **107** | regressione completa dell'adapter |
+| **Totale** | **105** | regressione completa dell'adapter |
 
 La suite non dipende dall'ordine di iterazione di `Hashtable`. Quando confronta
 contenuti usa appartenenza, dimensione e occorrenze, evitando assunzioni sulla
