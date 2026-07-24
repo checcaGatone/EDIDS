@@ -21,10 +21,7 @@ import java.util.NoSuchElementException;
  * </p>
  *
  * <p>
- * Poiché CLDC 1.1 non fornisce le eccezioni
- * {@code UnsupportedOperationException}
- * e {@code ConcurrentModificationException} presenti in J2SE 1.4.2, la
- * classe definisce al proprio interno le eccezioni non controllate
+ * Utilizzo le eccezioni definite al proprio interno; non controllate
  * {@link HUnsupportedOperationException} e {@link HIllegalStateException},
  * in modo da mantenere lo stesso significato
  * semantico previsto dal contratto originale pur restando dentro i vincoli
@@ -45,10 +42,10 @@ import java.util.NoSuchElementException;
  *
  * <p>
  * Ogni vista viene creata una sola volta e mantenuta nei campi
- * {@code keys}, {@code values} ed {@code entries}: le chiamate successive a
- * {@code keySet()}, {@code values()} ed {@code entrySet()} restituiscono
- * sempre lo stesso oggetto, così come previsto dal contratto di
- * {@code java.util.Map}.
+ * {@code keys}, {@code values} ed {@code entries}: Le tre viste vengono create al primo accesso e successivamente
+riutilizzate. Questa è una scelta interna di MapAdapter; il requisito
+contrattuale è che le viste siano collegate alla mappa sottostante,
+non che mantengano sempre la stessa identità.
  * </p>
  *
  * @author Filippo Barban
@@ -485,7 +482,7 @@ public class MapAdapter implements HMap {
         if (!table.containsKey(key)) {
             return false;
         }
-        return equal(table.get(key), entry.getValue());
+        return equal(entry.getValue(), table.get(key));
     }
 
     /**
@@ -577,7 +574,7 @@ public class MapAdapter implements HMap {
 
         /**
          * Restituisce un nuovo array {@code Object[]} contenente tutti gli elementi
-         * della vista, nell'ordine dell'iteratore.
+         * della vista, nell'ordine dell'iteratore,rispettando CLDC1.1 (per dimensione del array).
          *
          * @param array array di destinazione proposto dal chiamante
          * @return {@code array}, se dispone di spazio sufficiente,
@@ -1046,7 +1043,8 @@ public class MapAdapter implements HMap {
         }
 
         /**
-         * Restituisce il prossimo elemento dello snapshot, che può essere una chiave, un valore o un'entry a seconda del tipo dell'iteratore.
+         * Restituisce il prossimo elemento dello snapshot, che può essere una chiave,
+         * un valore o un'entry a seconda del tipo dell'iteratore.
          *
          * @return la prossima chiave, valore o entry, a seconda del tipo
          *         dell'iteratore
@@ -1070,7 +1068,8 @@ public class MapAdapter implements HMap {
         }
 
         /**
-         * Rimuove l'elemento restituito dall'ultima chiamata a {@link #next()} dalla mappa backing.
+         * Rimuove l'elemento restituito dall'ultima chiamata a {@link #next()} dalla
+         * mappa backing.
          *
          * <p>
          * Rimuove dalla mappa backing l'associazione corrispondente
@@ -1134,7 +1133,8 @@ public class MapAdapter implements HMap {
         }
 
         /**
-         * Associa il valore specificato alla chiave di questa entry nella mappa, restituendo il valore precedentemente associato.
+         * Associa il valore specificato alla chiave di questa entry nella mappa,
+         * restituendo il valore precedentemente associato.
          *
          * @param value nuovo valore da associare alla chiave di questa
          *              entry

@@ -8,16 +8,13 @@ import org.junit.runner.notification.Failure;
 /**
  * 
  * <p>
- * Il progetto utilizza esplicitamente JUnit 4.13 e Hamcrest Core 1.3.
- * Dopo avere compilato i package
- * {@code myAdapter} e {@code myTest} nella directory {@code build}.
- * .</p>
+ * Le classi sono passate esplicitamente a
+ * {@link JUnitCore#runClasses(Class...)}
+ * per rendere verificabile la suddivisione .
+ * </p>
  *
- * <p><b>Composizione della suite:</b>
- * Le classi sono passate esplicitamente a {@link JUnitCore#runClasses(Class...)}
- * per rendere verificabile la suddivisione .</p>
- *
- * <p><b>Output prodotto:</b>
+ * <p>
+ * <b>Expected Results </b>
  * Il tempo è misurato immediatamente prima e dopo la sola chiamata a JUnit. Per
  * ogni fallimento vengono stampati i messaggi di errore e la descrizione
  * fornita da JUnit . Seguono il numero complessivo dei
@@ -25,7 +22,8 @@ import org.junit.runner.notification.Failure;
  * millisecondi e l'esito finale {@code SUCCESSO} oppure {@code FALLIMENTO}.
  * Se {@link Result#wasSuccessful()}
  * restituisce {@code false}, il processo termina con codice {@code 1}; in caso
- * di successo termina normalmente con codice {@code 0}.</p>
+ * di successo termina normalmente con codice {@code 0}.
+ * </p>
  *
  * @author Filippo Barban
  * @version 1.1.0
@@ -37,7 +35,7 @@ import org.junit.runner.notification.Failure;
 public class TestRunner {
     /**
      * Avvia tramite JUnit 4.13 le quattro classi della suite e stampa il
-     * resoconto. 
+     * resoconto.
      * La composizione è definita direttamente
      * tramite {@link JUnitCore#runClasses(Class...)}.
      *
