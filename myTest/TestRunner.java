@@ -7,7 +7,7 @@ import org.junit.runner.notification.Failure;
 
 /**
  * 
- * <p><b>Requisiti di esecuzione:</b>
+ * <p>
  * Il progetto utilizza esplicitamente JUnit 4.13 e Hamcrest Core 1.3.
  * Dopo avere compilato i package
  * {@code myAdapter} e {@code myTest} nella directory {@code build}.
